@@ -1,0 +1,30 @@
+# Core version policy.
+#
+# Columns:
+#   core policy ref fallback
+#
+# policy:
+#   latest-tag  use the newest upstream tag containing a version number
+#   pinned      use the explicit ref in the third column
+#   branch      use libretro-super's fetched branch
+#
+# ref:
+#   tag, branch, or commit for pinned policy; use "-" otherwise
+#
+# fallback:
+#   branch      retry the fetched branch if a tagged build does not produce a core
+#   fail        fail instead of falling back
+#
+# The default applies to all cores not listed below. Keep branch as the safe
+# default so a new upstream tag cannot silently change a build.
+* branch - fail
+
+# Flycast master currently drifts faster than this PSC toolchain can absorb.
+# Use the newest released tag, but do not fall back silently to master.
+flycast latest-tag - fail
+
+# PPSSPP is custom-fetched and should only move after a PSC build/runtime check.
+ppsspp pinned v1.20.4 fail
+
+# Verified to build from the latest upstream version tag.
+virtualjaguar latest-tag - fail

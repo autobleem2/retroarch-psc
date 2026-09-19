@@ -1,0 +1,7 @@
+.git/
+.github/
+dist/
+build_metadata/
+build_status/
+logs/
+*.md

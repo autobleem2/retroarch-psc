@@ -148,7 +148,10 @@ RUN wget -q https://github.com/Kitware/CMake/releases/download/v3.26.6/cmake-3.2
 
 # ==============================================================================
 # Install ARM Libraries - Ubuntu bionic's armhf packages are the sysroot the
-# cross compiler links against (the console's firmware ships the same ABI set)
+# cross compiler links against (the console's firmware ships the same ABI set).
+# SDL2: the armhf *runtime* (linked through the libSDL2.so symlink made below) and the amd64 -dev package
+# for the headers (copied to the armhf include dir below; its x86 SDL_config.h is why immintrin.h is
+# faked) - libsdl2-dev:armhf and libsdl2-dev cannot be installed together, both own SDL_config.h.
 # ==============================================================================
 RUN dpkg --add-architecture armhf && \
     mv /etc/apt/sources.list /etc/apt/sources.list.bak && \
@@ -160,7 +163,7 @@ RUN dpkg --add-architecture armhf && \
     libasound2-dev:armhf \
     libudev-dev:armhf \
     libusb-1.0-0-dev:armhf \
-    libsdl2-dev:armhf \
+    libsdl2-2.0-0:armhf \
     libsdl2-dev \
     libgles2-mesa-dev:armhf \
     libegl1-mesa-dev:armhf \

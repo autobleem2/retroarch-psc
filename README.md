@@ -63,8 +63,10 @@ RETROARCH_VERSION=v1.23.0` to try another).
 
 ## Cores
 
-`cores/cores.txt` is the list, grouped by system, one core per line, `#` comments; a disabled core is left
-in place with the reason. `cores/scripts/core-fixes/<core>.sh` is a per-core override of the fetch/build
+`cores/cores.txt` is the list AutoBleem ships - the cores RetroBoot 1.2 shipped for the console, so they
+are known to run on the hardware, in build-priority order (its header has the mapping and what was left
+out and why); `cores/cores-full.txt` is AutoBleem-NG's whole list (170), everything known to *build*, to
+promote from after a hardware test. A disabled core is left in place with the reason. `cores/scripts/core-fixes/<core>.sh` is a per-core override of the fetch/build
 steps (`fetch_core`, `patch_core`, `configure_core_flags`, `build_core`, `core_source_dir`) for the cores
 libretro-super's generic rules cannot build for this target. `cores/scripts/core-refs.txt` pins a core to
 a tag or a ref (`flycast` and `virtualjaguar` build their latest version tag, `ppsspp` a pinned one, the

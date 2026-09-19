@@ -1,301 +1,104 @@
-# Libretro Cores for PlayStation Classic
-# One core name per line, comments start with #
-# Run: make CORE=<name> to build individual core
+# Libretro cores for the PlayStation Classic - the set AutoBleem ships.
 #
-# Within each section, cores are listed alphabetically (disabled entries
-# interleaved in alphabetical position based on their core name).
+# One core name per line (libretro-super's name), comments start with #. `make cores` builds them in this
+# order, so the ones a console is most likely to need come first - on the 2-core build server the whole
+# list is a day's work and the first hour should already give something to install.
+#
+# Selection rule: what RetroBoot 1.2 shipped for the console (KMFD's km_* builds, 89 cores on the owner's
+# stick) - cores known to run on the hardware - mapped to their libretro-super names. cores-full.txt is
+# AutoBleem-NG's whole list (170), everything that is known to *build*; promote from there after a
+# hardware test. RetroBoot cores with no equivalent here: app_launcher_rb (RetroBoot's own), imageviewer
+# (built into RetroArch), emux_chip8 (libretro-super's `emux` rule makes four cores under other names),
+# easyrpg (needs a cross-built liblcf) and ffmpeg (needs FFmpeg) - both disabled in NG's list, daphne
+# (dead upstream - dirksimple is its successor), pcsx_rearmed_peops/_unai (GPU-plugin variants of the one
+# pcsx_rearmed; PS1 games run in pcsx-ab anyway). KMFD's *_xtreme / 2016_bright / 2018 variants map to the
+# plain upstream core.
 
-# ============================================================================
-# NINTENDO
-# ============================================================================
+# === The ones to have first ===
+pcsx_rearmed            # km_pcsx_rearmed_neon - PS1 in RetroArch (AutoBleem's own launches use pcsx-ab)
+snes9x2010              # km_snes9x2010 - SNES, the balance for this CPU
+genesis_plus_gx         # km_genesis_plus_gx - Genesis / Mega Drive / Sega CD / SMS / Game Gear
+fceumm                  # km_fceumm - NES
+mgba                    # km_mgba - Game Boy Advance
+gambatte                # km_gambatte - Game Boy / Color
+mednafen_pce_fast       # km_mednafen_pce_fast - PC Engine / TurboGrafx-16
+fbneo                   # km_fbneo - arcade (FinalBurn Neo)
+mame2003_plus           # km_mame2003_plus - arcade (MAME 0.78+)
+picodrive               # km_picodrive - Genesis / 32X, the fast one
+snes9x                  # km_snes9x2018 - SNES, current Snes9x (accurate)
+nestopia                # km_nestopia - NES, accurate
+quicknes                # km_quicknes - NES, fastest
+gpsp                    # km_gpsp - GBA, fastest
+mednafen_ngp            # km_mednafen_ngp - Neo Geo Pocket
+mednafen_wswan          # km_mednafen_wswan - WonderSwan
+mednafen_supergrafx     # km_mednafen_supergrafx - SuperGrafx
+mednafen_vb             # km_mednafen_vb - Virtual Boy
+handy                   # km_handy - Atari Lynx
+stella2014              # km_stella - Atari 2600 (current stella needs a newer compiler)
+prosystem               # km_prosystem - Atari 7800
+atari800                # km_atari800 - Atari 400/800/5200
+neocd                   # km_neocd - Neo Geo CD
+fbalpha2012             # km_fbalpha2012 - arcade (FBA 2012)
+mame2000                # km_mame2000 - arcade (MAME 0.37b5)
+mame2003                # km_mame2003_xtreme - arcade (MAME 0.78)
 
-# === NES / Famicom ===
-fceumm                  # FCE Ultra - accurate NES emulator with mappers
-mesen                   # High-accuracy NES emulator
-nestopia                # Cycle-accurate NES emulator
-quicknes                # Fast, lightweight NES emulator
+# === More systems ===
+snes9x2002              # km_snes9x2002
+snes9x2005              # km_snes9x2005
+vbam                    # km_vbam - GBA (VBA-M)
+tgbdual                 # km_tgbdual - Game Boy with link cable
+pokemini                # km_pokemini - Pokemon Mini
+gw                      # km_gw - Game & Watch
+mupen64plus_next        # km_mupen64plus / km_glupen64 - N64
+parallel_n64            # km_parallel_n64 - N64
+yabause                 # km_yabause_xtreme - Saturn
+flycast                 # km_flycast_xtreme / km_reicast_xtreme - Dreamcast
+ppsspp                  # km_ppsspp_xtreme - PSP
+opera                   # km_opera - 3DO
+virtualjaguar           # km_virtualjaguar - Atari Jaguar
+mednafen_pcfx           # km_mednafen_pcfx - PC-FX
+o2em                    # km_o2em - Odyssey 2 / Videopac
+freechaf                # km_freechaf - Channel F
+freeintv                # km_freeintv - Intellivision
+vecx                    # km_vecx - Vectrex
+uzem                    # km_uzem - Uzebox
+mame2010                # km_mame2010 - arcade (MAME 0.139)
+mame2014                # km_mame2014 - arcade (MAME 0.160) - not in NG's list, a try
 
-# === SNES ===
-bsnes_cplusplus98       # Lightweight bsnes variant (C++98)
-bsnes_performance       # bsnes 2014 performance profile (lightest 3-profile build)
-chimerasnes             # SNES emulator (snes9x fork, lightweight)
-mednafen_supafaust      # Fast SNES emulator (Snes9x descendant)
-snes9x                  # Full-featured SNES emulator
-snes9x2002              # Older Snes9x, very fast
-snes9x2005              # Snes9x optimized for low-end devices
-snes9x2005_plus         # Snes9x 2005 with enhancements
-snes9x2010              # Snes9x balanced speed/accuracy
+# === Computers ===
+puae                    # km_puae_xtreme - Amiga
+vice_x64                # km_vice_x64_xtreme - C64
+hatari                  # km_hatari - Atari ST
+fuse                    # km_fuse - ZX Spectrum
+81                      # km_81 - ZX81
+cap32                   # km_cap32 - Amstrad CPC
+crocods                 # km_crocods - Amstrad CPC
+bluemsx                 # km_bluemsx - MSX
+fmsx                    # km_fmsx - MSX
+px68k                   # km_px68k - Sharp X68000
+x1                      # km_x1_millennium - Sharp X1 - not in NG's list, a try
+nekop2                  # km_nekop2 - PC-9801
+np2kai                  # km_np2kai - PC-9801
+quasi88                 # km_quasi88 - PC-8801
+theodore                # km_theodore - Thomson MO/TO
+bk                      # km_bk - Elektronika BK
+dosbox_svn              # km_dosbox_svn - DOS
 
-# === Game Boy / Game Boy Color ===
-doublecherrygb          # Game Boy with dual-screen support
-gambatte                # Accurate Game Boy / Color emulator
-gearboy                 # Game Boy / Color emulator
-irogb                   # Game Boy / Color emulator
-sameboy                 # High-accuracy Game Boy / Color
-tgbdual                 # Game Boy with link cable support
-
-# === Game Boy Advance ===
-gpsp                    # Game Boy Advance emulator
-mednafen_gba            # Mednafen GBA emulator
-meteor                  # Lightweight GBA emulator
-mgba                    # Accurate GBA emulator
-vba_next                # Visual Boy Advance optimized
-vbam                    # VBA-M (Visual Boy Advance - M)
-
-# === Virtual Boy ===
-mednafen_vb             # Nintendo Virtual Boy
-
-# === Pokemon Mini ===
-pokemini                # Pokemon Mini handheld
-
-# === Game & Watch ===
-gw                      # Nintendo Game & Watch
-
-# === N64 ===
-mupen64plus_next        # N64 - PSC Cortex-A35 GLES/ARM dynarec build hook
-parallext               # N64 - PSC Cortex-A35 GLES/ARM dynarec build hook
-parallel_n64            # N64 - PSC classic_armv8_a35 GLES/ARM dynarec build hook
-
-# === Nintendo DS ===
-desmume                 # Nintendo DS
-melonds                 # Nintendo DS
-
-# ============================================================================
-# SEGA
-# ============================================================================
-
-# === Master System / Game Gear ===
-gearsystem              # Master System / Game Gear
-smsplus                 # Sega Master System / Game Gear (lightweight)
-
-# === Genesis / Mega Drive / SMS / GG / 32X / Sega CD ===
-# blastem                # Disabled: upstream Makefile only supports x86/x86_64 and emits -m64
-clownmdemu              # Lightweight Mega Drive emulator
-genesis_plus_gx         # Best for Genesis/CD/SMS/Game Gear
-genesis_plus_gx_wide    # Genesis Plus GX with widescreen patches
-picodrive               # Sega Genesis / Mega Drive / 32X emulator
-
-# === Saturn ===
-kronos                  # Sega Saturn (newer)
-yabasanshiro            # Sega Saturn (yabause fork, optimized for ARM)
-yabause                 # Sega Saturn
-
-# === Dreamcast ===
-flycast                 # Sega Dreamcast (built via classic_armv8_a35 platform - PSC tuned)
-# reicast                # Disabled: pinned libretro-super has no reicast build rule; use flycast for Dreamcast
-vemulator               # Dreamcast VMU only (lightweight)
-
-# ============================================================================
-# SONY
-# ============================================================================
-
-# === PlayStation ===
-# duckstation            # Disabled: pinned libretro-super has no duckstation build rule; swanstation is the available DuckStation fork
-mednafen_psx            # Accurate PS1, slightly heavier
-pcsx_rearmed            # Best PS1 for PSC - native ARM dynarec
-swanstation             # DuckStation fork
-
-# === PSP ===
-ppsspp                  # PlayStation Portable
-
-# ============================================================================
-# ATARI
-# ============================================================================
-
-# === 2600 ===
-# stella                 # Disabled: current upstream requires <format>, unavailable in the GCC 9 PSC toolchain; use stella2014
-stella2014              # Atari 2600 emulator
-
-# === 400/800/5200 ===
-a5200                   # Atari 5200 (standalone, lightweight)
-atari800                # Atari 400/800/5200 computers
-
-# === 7800 ===
-prosystem               # Atari 7800 emulator
-
-# === Lynx ===
-handy                   # Atari Lynx emulator
-mednafen_lynx           # Atari Lynx emulator
-
-# === Jaguar ===
-virtualjaguar           # Atari Jaguar (64-bit console)
-
-# === ST/STE/TT/Falcon ===
-hatari                  # Atari ST/STE/TT/Falcon
-
-# ============================================================================
-# NEC
-# ============================================================================
-
-# === PC Engine / TurboGrafx ===
-mednafen_pce            # Full mednafen PC Engine (heavier than pce_fast)
-mednafen_pce_fast       # Fast PC Engine / TurboGrafx-16
-mednafen_pcfx           # PC-FX
-mednafen_supergrafx     # PC Engine SuperGrafx support
-
-# === PC-9801 ===
-nekop2                  # NEC PC-9801
-np2kai                  # NEC PC-9801 (enhanced)
-
-# === PC-8801 ===
-quasi88                 # NEC PC-8801
-
-# ============================================================================
-# SNK
-# ============================================================================
-
-# === Neo Geo Pocket / Color ===
-mednafen_ngp            # Neo Geo Pocket / Color
-race                    # NGPC emulator (lightweight)
-
-# === Neo Geo (cartridge/CD) ===
-geolith                 # Neo Geo cartridge emulator
-neocd                   # Neo Geo CD console
-# (also see fbalpha2012_neogeo and fbneo under Arcade)
-
-# ============================================================================
-# BANDAI
-# ============================================================================
-
-# === WonderSwan / Color ===
-mednafen_wswan          # Bandai WonderSwan / Color
-
-# ============================================================================
-# ARCADE
-# ============================================================================
-
-fbalpha2012             # Full FinalBurn Alpha 2012
-fbalpha2012_cps1        # CPS1 arcade (Street Fighter, etc)
-fbalpha2012_cps2        # CPS2 arcade (Marvel vs Capcom, etc)
-fbalpha2012_cps3        # CPS3 arcade (Street Fighter III, etc)
-fbalpha2012_neogeo      # Neo Geo arcade/console
-fbneo                   # FinalBurn Neo - best overall arcade
-mame2000                # MAME 0.37b5 - very fast, limited games
-mame2003                # MAME 0.78 (original)
-mame2003_plus           # MAME 0.78 - best balance for PSC
-mame2010                # MAME 0.139 - builds with PSC-specific 32-bit pointer/link flags
-
-# ============================================================================
-# COMMODORE
-# ============================================================================
-
-# === C64 / C128 ===
-frodo                   # Commodore 64 (lightweight, alt to VICE)
-vice_x128               # Commodore 128
-vice_x64                # Commodore 64
-vice_x64sc              # Commodore 64 (cycle-accurate)
-vice_xscpu64            # Commodore SuperCPU 64
-
-# === VIC-20 / Plus/4 / PET / CBM-II ===
-vice_xcbm2              # Commodore CBM-II (high profile)
-vice_xcbm5x0            # Commodore CBM-II (low profile)
-vice_xpet               # Commodore PET
-vice_xplus4             # Commodore Plus/4
-vice_xvic               # Commodore VIC-20
-
-# === Amiga ===
-puae                    # Commodore Amiga (P-UAE)
-
-# ============================================================================
-# OTHER COMPUTERS
-# ============================================================================
-
-# === Sinclair (ZX Spectrum / ZX81) ===
-81                      # Sinclair ZX81
-fuse                    # Sinclair ZX Spectrum
-
-# === Amstrad CPC ===
-cap32                   # Amstrad CPC 464/664/6128
-crocods                 # Amstrad CPC emulator
-
-# === MSX ===
-bluemsx                 # MSX / MSX2 / MSX2+ computers
-fmsx                    # MSX / MSX2 emulator
-
-# === Sharp X68000 ===
-px68k                   # Sharp X68000
-
-# === Thomson MO/TO ===
-theodore                # Thomson MO/TO computers
-
-# === Soviet micros ===
-bk                      # Elektronika BK
-
-# === DOS ===
-dosbox_core             # DOSBox core (alt fork)
-dosbox_svn              # MS-DOS / PC games
-dosbox_svn_ce           # DOSBox SVN community edition
-
-# ============================================================================
-# OTHER CONSOLES
-# ============================================================================
-
-arduous                 # Arduboy
-dice                    # DICE - discrete chip emulator (Pong-era)
-emuscv                  # Epoch Super Cassette Vision
-freechaf                # Fairchild Channel F
-freeintv                # Mattel Intellivision
-jollycv                 # ColecoVision (lightweight)
-o2em                    # Magnavox Odyssey 2 / Philips Videopac
-opera                   # 3DO Interactive Multiplayer
-potator                 # Watara Supervision
-tamalibretro            # Tamagotchi
-uzem                    # Uzebox (retro-minimalist console)
-vecx                    # GCE Vectrex (vector graphics)
-
-# ============================================================================
-# GAME ENGINES (standalone reimplementations / ports)
-# ============================================================================
-
-boom3                   # Doom 3 engine (id Tech 4)
-boom3_xp                # Doom 3: Resurrection of Evil expansion
-cannonball              # OutRun engine
-dirksimple              # Dragon's Lair / laserdisc player
-ecwolf                  # Wolfenstein 3D engine
-nxengine                # Cave Story engine
-openlara                # Tomb Raider engine
-prboom                  # Doom engine (PrBoom)
-reminiscence            # Flashback engine
-tyrquake                # Quake 1 engine
-vitaquake2              # Quake 2 engine
-vitaquake3              # Quake 3 Arena engine
-xrick                   # Rick Dangerous engine
-
-# ============================================================================
-# FANTASY CONSOLES & GAME FRAMEWORKS
-# ============================================================================
-
-chailove                # ChaiScript 2D game framework
-lowresnx                # LowRes NX fantasy console
-lutro                   # Lua game framework (LÖVE-like)
-retro8                  # PICO-8-style fantasy console
-tic80                   # TIC-80 fantasy computer
-uw8                     # MicroW8 fantasy console
-
-# ============================================================================
-# ADVENTURE / RPG
-# ============================================================================
-
-# easyrpg                # Disabled: requires cross-built liblcf >= 0.8.1 package
-scummvm                 # LucasArts/Sierra adventure games
-
-# ============================================================================
-# MEDIA / UTILITY
-# ============================================================================
-
-craft                   # Minecraft-like voxel demo
-# ffmpeg                 # Disabled: requires cross-built FFmpeg/libass development packages
-gme                     # Game music player (NSF, SPC, etc)
-numero                  # TI-83 calculator
-pocketcdg               # Karaoke CD+G player
-
-# ============================================================================
-# FUN / CASUAL
-# ============================================================================
-
-2048                    # 2048 puzzle game
-dinothawr               # Puzzle game
-gong                    # Pong-like demo game
-jumpnbump               # Jump'n'Bump multiplayer
-mrboom                  # Bomberman clone (8-player)
-thepowdertoy            # The Powder Toy - falling-sand simulator
+# === Game engines, players, fun ===
+scummvm                 # km_scummvm
+prboom                  # km_prboom - Doom
+tyrquake                # km_tyrquake - Quake
+ecwolf                  # km_ecwolf - Wolfenstein 3D
+nxengine                # km_nxengine - Cave Story
+cannonball              # km_cannonball - OutRun
+reminiscence            # km_reminiscence - Flashback
+xrick                   # km_xrick - Rick Dangerous
+dirksimple              # km_daphne's successor - Dragon's Lair / laserdisc
+tic80                   # km_tic80
+lutro                   # km_lutro
+chailove                # km_chailove
+gme                     # km_gme - game music
+pocketcdg               # km_pocketcdg - CD+G karaoke
+2048                    # km_2048
+dinothawr               # km_dinothawr
+mrboom                  # km_mrboom

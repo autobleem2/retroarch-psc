@@ -289,10 +289,11 @@ package-retroarch:
 # through AutoBleem2's tools/repo_publish.sh (rsync to the build server + the index rerun there). AB2_DIR
 # is that checkout (../AutoBleem2 by default). Only the newest tag is kept there - the repository's rule.
 AB2_DIR ?= ../AutoBleem2
+PUBLISH_FLAGS ?=          # --local when this runs on the build server itself
 publish:
 	@test -f $(RELEASE_DIR)/manifest.json || { echo "Error: nothing in $(RELEASE_DIR). Run 'make package' or 'make package-retroarch' first."; exit 1; }
 	@test -x $(AB2_DIR)/tools/repo_publish.sh || { echo "Error: $(AB2_DIR)/tools/repo_publish.sh not found (AB2_DIR=...)."; exit 1; }
-	$(AB2_DIR)/tools/repo_publish.sh psc-retroarch $(TAG) $(RELEASE_DIR)/retroarch-psc-$(TAG).zip $(RELEASE_DIR)/manifest.json
+	$(AB2_DIR)/tools/repo_publish.sh $(PUBLISH_FLAGS) psc-retroarch $(TAG) $(RELEASE_DIR)/retroarch-psc-$(TAG).zip $(RELEASE_DIR)/manifest.json
 
 # ------------------------------------------------------------------------------------------------
 # Information

@@ -41,7 +41,7 @@ if [ ! -f "$SYSROOT/usr/include/freetype2/ft2build.h" ]; then
     echo "=== freetype: Stretch's libfreetype6-dev into the sysroot ==="
     [ "$(id -u)" = 0 ] || { echo "error: needs root to unpack freetype into $SYSROOT (docker run -u root)" >&2; exit 1; }
     mkdir -p "$WORK/debs" && cd "$WORK/debs"
-    for deb in f/freetype/libfreetype6_2.6.3-3.2+deb9u2_armhf.deb f/freetype/libfreetype6-dev_2.6.3-3.2+deb9u2_armhf.deb; do
+    for deb in f/freetype/libfreetype6_2.6.3-3.2+deb9u1_armhf.deb f/freetype/libfreetype6-dev_2.6.3-3.2+deb9u1_armhf.deb; do
         [ -f "$(basename "$deb")" ] || wget -q "$STRETCH/$deb"
         dpkg-deb -x "$(basename "$deb")" "$SYSROOT"
     done

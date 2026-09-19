@@ -1,0 +1,224 @@
+From: AutoBleem <autobleem@retromenele.pl>
+Subject: [PATCH] dylib_load: unpack an xz-compressed core before dlopen (HAVE_XZ_CORES)
+
+The PlayStation Classic's RetroBoot ships its cores as xz streams under the .so name (KMFD's km_*
+cores, 147 of the 178 on a typical stick, 489 MB packed / 1.66 GB unpacked) and its patched RetroArch
+1.9.0 unpacks them as it loads them. This is the same for a stock RetroArch: a core whose file starts
+with the xz magic is decompressed with liblzma into XZ_CORES_CACHE_DIR (/tmp/retroarch-cores) and
+dlopen'ed from there. The unpacked copy is kept while its source has the same path, size and mtime (a
+second launch of the same core is instant); other cached cores are dropped when a new one is unpacked,
+so /tmp - RAM on the console - holds one core. A stream packed twice (km_nestopia on the owner's stick)
+is unpacked twice. Not an xz file: the path goes to dlopen untouched.
+
+Build with HAVE_XZ_CORES=1 and XZ_CORES_LIBS (default -llzma; the console has no liblzma in its
+firmware, so the PSC build links Stretch's liblzma.a: -l:liblzma.a).
+---
+diff --git a/Makefile.common b/Makefile.common
+index 57dabf5..0a1890a 100644
+--- a/Makefile.common
++++ b/Makefile.common
+@@ -1933,6 +1933,12 @@ OBJ += $(LIBRETRO_COMM_DIR)/file/archive_file.o \
+        $(LIBRETRO_COMM_DIR)/streams/trans_stream.o \
+        $(LIBRETRO_COMM_DIR)/streams/trans_stream_pipe.o
+ 
++ifeq ($(HAVE_XZ_CORES),1)
++   DEFINES += -DHAVE_XZ_CORES
++   LIBS    += $(if $(XZ_CORES_LIBS),$(XZ_CORES_LIBS),-llzma)
++endif
++
++
+ ifeq ($(HAVE_7ZIP),1)
+    INCLUDE_DIRS += -I$(DEPS_DIR)/7zip
+    HAVE_COMPRESSION = 1
+diff --git a/libretro-common/dynamic/dylib.c b/libretro-common/dynamic/dylib.c
+index ff69edc..98947ed 100644
+--- a/libretro-common/dynamic/dylib.c
++++ b/libretro-common/dynamic/dylib.c
+@@ -41,6 +41,173 @@
+ #if !defined(ORBIS)
+ #include <dlfcn.h>
+ #endif
++
++#if defined(HAVE_XZ_CORES) && !defined(_WIN32)
++#include <lzma.h>
++#include <sys/stat.h>
++#include <sys/types.h>
++#include <dirent.h>
++#include <unistd.h>
++#include <boolean.h>
++
++/* An xz-compressed core (RetroBoot's km_* cores on the PlayStation Classic) is unpacked into this
++ * directory and loaded from there. One core is kept: the last one loaded, as long as its source has
++ * the same path, size and mtime (the ".src" stamp next to it says which). */
++#ifndef XZ_CORES_CACHE_DIR
++#define XZ_CORES_CACHE_DIR "/tmp/retroarch-cores"
++#endif
++
++static bool xz_core_is_xz(const char *path)
++{
++   static const unsigned char magic[6] = {0xFD, '7', 'z', 'X', 'Z', 0x00};
++   unsigned char head[6];
++   FILE *f = fopen(path, "rb");
++   bool is_xz;
++   if (!f)
++      return false;
++   is_xz = fread(head, 1, sizeof(head), f) == sizeof(head) && memcmp(head, magic, sizeof(head)) == 0;
++   fclose(f);
++   return is_xz;
++}
++
++/* one xz stream (or several, concatenated) from src to dst */
++static bool xz_core_unpack(const char *src, const char *dst)
++{
++   lzma_stream strm = LZMA_STREAM_INIT;
++   lzma_action action = LZMA_RUN;
++   unsigned char inbuf[64 * 1024];
++   unsigned char outbuf[64 * 1024];
++   FILE *in = NULL, *out = NULL;
++   bool ok = false;
++
++   if (lzma_stream_decoder(&strm, UINT64_MAX, LZMA_CONCATENATED) != LZMA_OK)
++      return false;
++   in  = fopen(src, "rb");
++   out = fopen(dst, "wb");
++   if (!in || !out)
++      goto done;
++   strm.next_in   = NULL;
++   strm.avail_in  = 0;
++   strm.next_out  = outbuf;
++   strm.avail_out = sizeof(outbuf);
++   for (;;)
++   {
++      lzma_ret ret;
++      if (strm.avail_in == 0 && action == LZMA_RUN)
++      {
++         strm.next_in  = inbuf;
++         strm.avail_in = fread(inbuf, 1, sizeof(inbuf), in);
++         if (ferror(in))
++            goto done;
++         if (feof(in))
++            action = LZMA_FINISH;
++      }
++      ret = lzma_code(&strm, action);
++      if (strm.avail_out == 0 || ret == LZMA_STREAM_END)
++      {
++         size_t n = sizeof(outbuf) - strm.avail_out;
++         if (n && fwrite(outbuf, 1, n, out) != n)
++            goto done;
++         strm.next_out  = outbuf;
++         strm.avail_out = sizeof(outbuf);
++      }
++      if (ret == LZMA_STREAM_END)
++      {
++         ok = true;
++         break;
++      }
++      if (ret != LZMA_OK)
++         goto done;
++   }
++done:
++   lzma_end(&strm);
++   if (in)
++      fclose(in);
++   if (out && fclose(out) != 0)
++      ok = false;
++   if (!ok)
++      unlink(dst);
++   return ok;
++}
++
++/* the cache holds one core: everything but `keep` (and its stamp) goes */
++static void xz_core_prune_cache(const char *keep)
++{
++   DIR *d = opendir(XZ_CORES_CACHE_DIR);
++   struct dirent *e;
++   size_t keep_len = strlen(keep);
++   if (!d)
++      return;
++   while ((e = readdir(d)))
++   {
++      char p[PATH_MAX_LENGTH];
++      if (e->d_name[0] == '.')
++         continue;
++      if (strncmp(e->d_name, keep, keep_len) == 0 &&
++            (e->d_name[keep_len] == '\0' || strcmp(e->d_name + keep_len, ".src") == 0))
++         continue;
++      snprintf(p, sizeof(p), "%s/%s", XZ_CORES_CACHE_DIR, e->d_name);
++      unlink(p);
++   }
++   closedir(d);
++}
++
++/* The path to dlopen: the unpacked copy of an xz core (written into buf), else path itself. */
++static const char *xz_core_path(const char *path, char *buf, size_t len)
++{
++   struct stat st;
++   char stamp_path[PATH_MAX_LENGTH];
++   char tmp[PATH_MAX_LENGTH];
++   char want[PATH_MAX_LENGTH + 64];
++   char have[PATH_MAX_LENGTH + 64];
++   const char *name = path_basename(path);
++   FILE *f;
++   int rounds;
++
++   if (!xz_core_is_xz(path) || stat(path, &st) != 0)
++      return path;
++
++   mkdir(XZ_CORES_CACHE_DIR, 0777);
++   snprintf(buf, len, "%s/%s", XZ_CORES_CACHE_DIR, name);
++   snprintf(stamp_path, sizeof(stamp_path), "%s.src", buf);
++   snprintf(want, sizeof(want), "%s %lld %lld", path, (long long)st.st_size, (long long)st.st_mtime);
++
++   have[0] = '\0';
++   if ((f = fopen(stamp_path, "r")))
++   {
++      if (!fgets(have, sizeof(have), f))
++         have[0] = '\0';
++      fclose(f);
++   }
++   if (strcmp(want, have) == 0 && stat(buf, &st) == 0 && st.st_size > 0)
++      return buf;
++
++   xz_core_prune_cache(name);
++   unlink(stamp_path);
++   snprintf(tmp, sizeof(tmp), "%s.tmp", buf);
++   /* a stream packed twice (it happens) unpacks to another xz stream: go round again */
++   for (rounds = 0; rounds < 3; rounds++)
++   {
++      if (!xz_core_unpack(rounds == 0 ? path : buf, tmp) || rename(tmp, buf) != 0)
++      {
++         fprintf(stderr, "[xz cores] could not unpack %s\n", path);
++         unlink(tmp);
++         unlink(buf);
++         return path;
++      }
++      if (!xz_core_is_xz(buf))
++         break;
++   }
++   if ((f = fopen(stamp_path, "w")))
++   {
++      fputs(want, f);
++      fclose(f);
++   }
++   fprintf(stderr, "[xz cores] %s unpacked to %s\n", path, buf);
++   return buf;
++}
++#endif
++
+ #endif
+ 
+ /* Assume W-functions do not work below Win2K and Xbox platforms */
+@@ -145,7 +312,12 @@ dylib_t dylib_load(const char *path)
+     else
+         lib = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
+ #else
+-   dylib_t lib = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
++   dylib_t lib;
++#ifdef HAVE_XZ_CORES
++   char xz_path[PATH_MAX_LENGTH];
++   path = xz_core_path(path, xz_path, sizeof(xz_path));
++#endif
++   lib = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
+ #endif
+    return lib;
+ }

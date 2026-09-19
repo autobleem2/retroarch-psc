@@ -36,20 +36,40 @@ for t in "$CC_" "$CXX_" "$STRIP_"; do
     [ -x "$t" ] || { echo "error: $t not found - run this inside the autobleem-build image" >&2; exit 1; }
 done
 
-# --- freetype into the sysroot (Stretch's own package, the version the console's libfreetype.so.6 is) ---
-if [ ! -f "$SYSROOT/usr/include/freetype2/ft2build.h" ]; then
-    echo "=== freetype: Stretch's libfreetype6-dev into the sysroot ==="
-    [ "$(id -u)" = 0 ] || { echo "error: needs root to unpack freetype into $SYSROOT (docker run -u root)" >&2; exit 1; }
+# --- freetype and liblzma into the sysroot (Stretch's own packages - the console's libfreetype.so.6
+# is that freetype; liblzma is linked statically, the firmware has none) ---
+if [ ! -f "$SYSROOT/usr/include/freetype2/ft2build.h" ] || [ ! -f "$SYSROOT/usr/lib/arm-linux-gnueabihf/liblzma.a" ]; then
+    echo "=== Stretch's libfreetype6-dev and liblzma-dev into the sysroot ==="
+    [ "$(id -u)" = 0 ] || { echo "error: needs root to unpack into $SYSROOT (docker run -u root)" >&2; exit 1; }
     mkdir -p "$WORK/debs" && cd "$WORK/debs"
-    for deb in f/freetype/libfreetype6_2.6.3-3.2+deb9u1_armhf.deb f/freetype/libfreetype6-dev_2.6.3-3.2+deb9u1_armhf.deb; do
+    for deb in f/freetype/libfreetype6_2.6.3-3.2+deb9u1_armhf.deb f/freetype/libfreetype6-dev_2.6.3-3.2+deb9u1_armhf.deb \
+               x/xz-utils/liblzma5_5.2.2-1.2+b1_armhf.deb x/xz-utils/liblzma-dev_5.2.2-1.2+b1_armhf.deb; do
         [ -f "$(basename "$deb")" ] || wget -q "$STRETCH/$deb"
         dpkg-deb -x "$(basename "$deb")" "$SYSROOT"
     done
     cd "$ROOT"
-    # the dev package's libfreetype.so is an absolute symlink into /usr/lib/... - make it relative
+    # the dev packages' .so links are absolute (into /usr/lib/...) - make them relative
     ln -sfn libfreetype.so.6 "$SYSROOT/usr/lib/arm-linux-gnueabihf/libfreetype.so"
+    ln -sfn liblzma.so.5 "$SYSROOT/usr/lib/arm-linux-gnueabihf/liblzma.so"
     # freetype-config is a host script; RetroArch's configure asks pkg-config, which is what we set up
 fi
+
+# --- a wayland-scanner the sysroot's libwayland can take. RetroArch generates its Wayland protocol glue
+# at configure time with the host's scanner; the image's 1.21 emits wl_proxy_marshal_flags() (wayland
+# >= 1.20) and the console has 1.12. Stretch's own wayland 1.12 builds just the scanner in a minute. ---
+SCANNER_DIR="$WORK/tools"
+if [ ! -x "$SCANNER_DIR/bin/wayland-scanner" ]; then
+    echo "=== wayland-scanner 1.12 (the sysroot's libwayland version) ==="
+    mkdir -p "$WORK/debs" && cd "$WORK/debs"
+    [ -f wayland_1.12.0.orig.tar.gz ] || wget -q "$STRETCH/w/wayland/wayland_1.12.0.orig.tar.gz"
+    rm -rf wayland-1.12.0 && tar -xzf wayland_1.12.0.orig.tar.gz && cd wayland-1.12.0
+    ./configure --prefix="$SCANNER_DIR" --disable-libraries --disable-documentation --disable-dtd-validation \
+        --disable-dependency-tracking > configure.log 2>&1 || { tail -20 configure.log; exit 1; }
+    make -j"$JOBS" > make.log 2>&1 && make install > install.log 2>&1 || { tail -20 make.log; exit 1; }
+    cd "$ROOT"
+fi
+export PATH="$SCANNER_DIR/bin:$PATH"
+echo "=== $(wayland-scanner --version 2>&1) ==="
 
 # pkg-config answers from the sysroot only, every path prefixed with it (that is what makes the .pc
 # files' /usr/... right for a cross build). sdl2.pc: the image's SDL2 lives in /opt/psc/sdl2, outside the
@@ -85,7 +105,7 @@ if [ ! -d "$SRC/.git" ]; then
     mkdir -p "$WORK"
     git clone --depth=1 --branch "$RETROARCH_VERSION" https://github.com/libretro/RetroArch.git "$SRC"
     git -C "$SRC" submodule update --init --recursive --depth 1
-    for p in wl_shell_fallback xmb_ribbon_drop_oes_derivatives_ext xmb_shader_pipeline_psc_limit alsa_force_s16_psc_mtk; do
+    for p in wl_shell_fallback xmb_ribbon_drop_oes_derivatives_ext xmb_shader_pipeline_psc_limit alsa_force_s16_psc_mtk xz_core_loading; do
         echo "=== patch: $p ==="
         git -C "$SRC" apply "$ROOT/retroarch/patches/$p.patch"
     done
@@ -128,8 +148,10 @@ if [ ! -f config.mk ] || [ "${RECONFIGURE:-}" = 1 ]; then
     grep -E '^HAVE_(WAYLAND|EGL|OPENGLES|FREETYPE|UDEV|ALSA|NEON|SDL2|OPENGL|X11|PULSE) ' config.mk || true
 fi
 
+# HAVE_XZ_CORES: patches/xz_core_loading.patch - RetroBoot's xz-compressed cores load as they are,
+# through Stretch's liblzma linked statically (the firmware has no liblzma)
 echo "=== make (JOBS=$JOBS) ==="
-make HAVE_CLASSIC=1 \
+make HAVE_CLASSIC=1 HAVE_XZ_CORES=1 XZ_CORES_LIBS="-l:liblzma.a" \
     GIT_VERSION="autobleem-$PSC_BUILD_NUM" \
     NEON_CFLAGS="-mfpu=neon-vfpv4" \
     NEON_ASFLAGS="-mfpu=neon-vfpv4" \

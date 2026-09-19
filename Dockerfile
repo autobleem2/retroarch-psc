@@ -175,6 +175,7 @@ RUN dpkg --add-architecture armhf && \
     libxkbcommon-dev:armhf \
     libexpat1-dev:armhf \
     zlib1g-dev:armhf \
+    liblzma-dev:armhf \
     libpng-dev:armhf \
     libgl1-mesa-dev:armhf \
     && (apt-get remove -y libpulse-dev:armhf || true) \
@@ -304,6 +305,11 @@ RUN git apply /build/RetroArch/patches/xmb_shader_pipeline_psc_limit.patch
 # RA has no retry path, so audio init fails entirely without this patch.
 COPY retroarch/patches/alsa_force_s16_psc_mtk.patch /build/RetroArch/patches/alsa_force_s16_psc_mtk.patch
 RUN git apply /build/RetroArch/patches/alsa_force_s16_psc_mtk.patch
+
+# Load RetroBoot's xz-compressed cores as they are (patches/xz_core_loading.patch; HAVE_XZ_CORES=1 in
+# Makefile.psc, liblzma linked statically - the firmware has none).
+COPY retroarch/patches/xz_core_loading.patch /build/RetroArch/patches/xz_core_loading.patch
+RUN git apply /build/RetroArch/patches/xz_core_loading.patch
 
 # Copy PSC-specific Makefile
 COPY retroarch/Makefile.psc /build/RetroArch/Makefile.psc

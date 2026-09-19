@@ -57,6 +57,7 @@ dependencies are satisfied by the stock firmware.
 | `wl_shell_fallback.patch` | Wayland fallback for the console's Weston 1.11 (no `xdg_shell`). |
 | `xmb_ribbon_drop_oes_derivatives_ext.patch` | Fixes the XMB ribbon shader on PowerVR Rogue. |
 | `xmb_shader_pipeline_psc_limit.patch` | Hides pipeline options too slow for the console; only "Off" and "Ribbon Simplified" are exposed. |
+| `xz_core_loading.patch` | Ours (2026-09-20): a core file that is an xz stream - RetroBoot's `km_*` cores, 147 of the 178 on a typical stick - is unpacked with liblzma into `/tmp/retroarch-cores` and loaded from there, kept for the next launch, one core at a time. `HAVE_XZ_CORES=1`, liblzma linked statically (the firmware has none). `tools/check_cores.py` is the report that showed the need. |
 
 `RETROARCH_VERSION` at the top of the Dockerfile is the RetroArch tag built (`make retroarch
 RETROARCH_VERSION=v1.23.0` to try another).

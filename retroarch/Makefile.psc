@@ -60,7 +60,7 @@ retroarch:
 		--enable-neon \
 		--enable-sdl2 \
 		--disable-discord && \
-	make HAVE_CLASSIC=1 \
+	make HAVE_CLASSIC=1 HAVE_XZ_CORES=1 XZ_CORES_LIBS="-l:liblzma.a" \
 		GIT_VERSION="autobleem-ng-$(PSC_BUILD_NUM)" \
 		NEON_CFLAGS="-mfpu=neon-vfpv4" \
 		NEON_ASFLAGS="-mfpu=neon-vfpv4" \

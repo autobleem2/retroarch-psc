@@ -94,13 +94,13 @@ produces, in `dist/release/`:
 ### Publishing
 
 The repository is private, so its GitHub releases cannot be downloaded anonymously; what the PC installer
-fetches is published on the organisation's GitHub Pages site instead: `make publish` copies
-`dist/release/` into a checkout of [autobleem.github.io](https://github.com/autobleem/autobleem.github.io)
-(`PAGES_DIR`, `../autobleem.github.io` by default) under `resources/retroarch-psc/` - every asset under its
-versioned name, `manifest.json` the latest, `manifest-<tag>.json` kept per release - and that checkout is
-committed and pushed by hand. The installer reads
-`https://autobleem.github.io/resources/retroarch-psc/manifest.json` and resolves the asset names against it.
-`make package-retroarch` makes a RetroArch-only release (`"cores": null`) when the cores are not wanted.
+fetches is on AutoBleem's download repository instead, `https://autobleem.retromenele.pl/psc/retroarch/`:
+`make publish` runs AutoBleem2's `tools/repo_publish.sh psc-retroarch <tag> <zip> manifest.json` (`AB2_DIR`,
+`../AutoBleem2` by default - rsync to the build server, `.sha256` sidecars, the index rerun there), which
+lands the files in `psc/retroarch/<tag>/` and writes `psc/retroarch/latest.json` (the zip's url, size and
+sha256, plus the manifest's url); only the newest tag is kept. The installer reads `latest.json`, or the
+manifest by its url. `make package-retroarch` makes a RetroArch-only release (`"cores": null`) when the
+cores are not wanted.
 
 ## CI (`.github/workflows/build.yml`)
 

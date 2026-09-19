@@ -2,7 +2,7 @@
 """Write dist/release/manifest.json - what a release of this repository contains.
 
 The PC installer (AutoBleem's) reads this file from wherever the release is published (the GitHub release,
-or autobleem.github.io/resources/retroarch-psc/ - the asset names are relative to the manifest's own URL)
+or autobleem.retromenele.pl/psc/retroarch/<tag>/ - the asset names are relative to the manifest's own URL)
 to know which assets to download, their hashes, and which cores are inside the cores tarball (with each
 core's display name, system and extensions from its .info file, so it can offer a picker without
 unpacking anything first). "cores" is null for a RetroArch-only release.

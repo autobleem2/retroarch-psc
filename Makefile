@@ -7,7 +7,7 @@
 #                             manifest.json (what the PC installer reads)
 #   make release              everything above
 #   make package-retroarch    the zip + manifest.json without cores (no cores image needed)
-#   make publish              copy dist/release/ into ../autobleem.github.io/resources/retroarch-psc/
+#   make publish              dist/release/ -> https://autobleem.retromenele.pl/psc/retroarch/<tag>/ (via ../AutoBleem2)
 #   make status | retry-failed | audit-cores | check-version | shell | clean | distclean | help
 #
 # Knobs: PARALLEL (cores built at once), JOBS_PER_CORE, FORCE=1 (rebuild built cores), TAG (release
@@ -285,19 +285,14 @@ package-retroarch:
 	@python3 tools/make_manifest.py --tag "$(TAG)" --release-dir $(RELEASE_DIR) 		--retroarch-version-file $(RA_OUT)/VERSION
 	@ls -lh $(RELEASE_DIR)/
 
-# Copy dist/release/ into a checkout of autobleem.github.io (PAGES_DIR) under resources/retroarch-psc/:
-# every asset by its versioned name, manifest.json = the latest. Commit and push it from there.
-PAGES_DIR ?= ../autobleem.github.io
-PAGES_SUBDIR := resources/retroarch-psc
+# Publish dist/release/ to the download repository, https://autobleem.retromenele.pl/psc/retroarch/<tag>/,
+# through AutoBleem2's tools/repo_publish.sh (rsync to the build server + the index rerun there). AB2_DIR
+# is that checkout (../AutoBleem2 by default). Only the newest tag is kept there - the repository's rule.
+AB2_DIR ?= ../AutoBleem2
 publish:
 	@test -f $(RELEASE_DIR)/manifest.json || { echo "Error: nothing in $(RELEASE_DIR). Run 'make package' or 'make package-retroarch' first."; exit 1; }
-	@test -d $(PAGES_DIR)/.git || { echo "Error: $(PAGES_DIR) is not a checkout of autobleem.github.io (PAGES_DIR=...)."; exit 1; }
-	@mkdir -p $(PAGES_DIR)/$(PAGES_SUBDIR)
-	@cp $(RELEASE_DIR)/*.zip $(RELEASE_DIR)/*.tar.gz $(RELEASE_DIR)/*.md $(PAGES_DIR)/$(PAGES_SUBDIR)/ 2>/dev/null; true
-	@cp $(RELEASE_DIR)/manifest.json $(PAGES_DIR)/$(PAGES_SUBDIR)/manifest.json
-	@cp $(RELEASE_DIR)/manifest.json $(PAGES_DIR)/$(PAGES_SUBDIR)/manifest-$(TAG).json
-	@echo "Copied to $(PAGES_DIR)/$(PAGES_SUBDIR)/ - now: cd $(PAGES_DIR) && git add -A && git commit && git push"
-	@ls -l $(PAGES_DIR)/$(PAGES_SUBDIR)/
+	@test -x $(AB2_DIR)/tools/repo_publish.sh || { echo "Error: $(AB2_DIR)/tools/repo_publish.sh not found (AB2_DIR=...)."; exit 1; }
+	$(AB2_DIR)/tools/repo_publish.sh psc-retroarch $(TAG) $(RELEASE_DIR)/retroarch-psc-$(TAG).zip $(RELEASE_DIR)/manifest.json
 
 # ------------------------------------------------------------------------------------------------
 # Information

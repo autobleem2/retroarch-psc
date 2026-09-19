@@ -6,6 +6,8 @@
 #   make package              dist/release/: retroarch-psc-<tag>.zip, libretro-cores-psc-<tag>.tar.gz,
 #                             manifest.json (what the PC installer reads)
 #   make release              everything above
+#   make package-retroarch    the zip + manifest.json without cores (no cores image needed)
+#   make publish              copy dist/release/ into ../autobleem.github.io/resources/retroarch-psc/
 #   make status | retry-failed | audit-cores | check-version | shell | clean | distclean | help
 #
 # Knobs: PARALLEL (cores built at once), JOBS_PER_CORE, FORCE=1 (rebuild built cores), TAG (release
@@ -55,7 +57,7 @@ BUILD_ARGS := $(if $(LIBRETRO_SUPER_REF),--build-arg LIBRETRO_SUPER_REF=$(LIBRET
 ENABLED_CORES = sed 's/\#.*//' $(CORES_FILE) | tr -d ' \t' | grep -v '^$$'
 
 .PHONY: all docker-check image-base image-cores ensure-cores-image retroarch cores core parallel-build version-info core-info \
-        commits package release status retry-failed audit-cores check-version list shell clean distclean help
+        commits package package-retroarch publish release status retry-failed audit-cores check-version list shell clean distclean help
 
 all: retroarch cores
 
@@ -258,6 +260,29 @@ package: version-info core-info
 	@ls -lh $(RELEASE_DIR)/
 
 release: retroarch cores package
+
+# A RetroArch-only release: the zip + a manifest.json with "cores": null. Needs no cores image.
+package-retroarch:
+	@test -f $(RA_OUT)/retroarch || { echo "Error: no RetroArch binary. Run 'make retroarch' first."; exit 1; }
+	@rm -rf $(RELEASE_DIR) && mkdir -p $(RELEASE_DIR)
+	@echo "=== Packaging RetroArch ==="
+	@tmp=$$(mktemp -d) && cp $(RA_OUT)/retroarch $(RA_OUT)/VERSION "$$tmp/" && 		cp -r retroarch/docs "$$tmp/docs" && 		(cd "$$tmp" && zip -q -r "$(PWD)/$(RELEASE_DIR)/retroarch-psc-$(TAG).zip" .) && rm -rf "$$tmp"
+	@python3 tools/make_manifest.py --tag "$(TAG)" --release-dir $(RELEASE_DIR) 		--retroarch-version-file $(RA_OUT)/VERSION
+	@ls -lh $(RELEASE_DIR)/
+
+# Copy dist/release/ into a checkout of autobleem.github.io (PAGES_DIR) under resources/retroarch-psc/:
+# every asset by its versioned name, manifest.json = the latest. Commit and push it from there.
+PAGES_DIR ?= ../autobleem.github.io
+PAGES_SUBDIR := resources/retroarch-psc
+publish:
+	@test -f $(RELEASE_DIR)/manifest.json || { echo "Error: nothing in $(RELEASE_DIR). Run 'make package' or 'make package-retroarch' first."; exit 1; }
+	@test -d $(PAGES_DIR)/.git || { echo "Error: $(PAGES_DIR) is not a checkout of autobleem.github.io (PAGES_DIR=...)."; exit 1; }
+	@mkdir -p $(PAGES_DIR)/$(PAGES_SUBDIR)
+	@cp $(RELEASE_DIR)/*.zip $(RELEASE_DIR)/*.tar.gz $(RELEASE_DIR)/*.md $(PAGES_DIR)/$(PAGES_SUBDIR)/ 2>/dev/null; true
+	@cp $(RELEASE_DIR)/manifest.json $(PAGES_DIR)/$(PAGES_SUBDIR)/manifest.json
+	@cp $(RELEASE_DIR)/manifest.json $(PAGES_DIR)/$(PAGES_SUBDIR)/manifest-$(TAG).json
+	@echo "Copied to $(PAGES_DIR)/$(PAGES_SUBDIR)/ - now: cd $(PAGES_DIR) && git add -A && git commit && git push"
+	@ls -l $(PAGES_DIR)/$(PAGES_SUBDIR)/
 
 # ------------------------------------------------------------------------------------------------
 # Information

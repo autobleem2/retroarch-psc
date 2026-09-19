@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Write dist/release/manifest.json - what a release of this repository contains.
 
-The PC installer (AutoBleem's) reads this file from the GitHub release to know which assets to download,
-their hashes, and which cores are inside the cores tarball (with each core's display name, system and
-extensions from its .info file, so it can offer a picker without unpacking anything first).
+The PC installer (AutoBleem's) reads this file from wherever the release is published (the GitHub release,
+or autobleem.github.io/resources/retroarch-psc/ - the asset names are relative to the manifest's own URL)
+to know which assets to download, their hashes, and which cores are inside the cores tarball (with each
+core's display name, system and extensions from its .info file, so it can offer a picker without
+unpacking anything first). "cores" is null for a RetroArch-only release.
 
     make_manifest.py --tag v1.22.2-1 --release-dir dist/release \
         --retroarch-version-file dist/retroarch/VERSION --cores-version-file build_metadata/VERSION \
@@ -78,22 +80,23 @@ def main():
     ap.add_argument("--release-dir", required=True)
     ap.add_argument("--retroarch-version-file")
     ap.add_argument("--cores-version-file")
-    ap.add_argument("--cores-dir", required=True)
-    ap.add_argument("--cores-file", required=True)
-    ap.add_argument("--info-dir", required=True)
+    ap.add_argument("--cores-dir", default="dist/cores")
+    ap.add_argument("--cores-file", default="cores/cores.txt")
+    ap.add_argument("--info-dir", default="dist/info")
     args = ap.parse_args()
 
     ra_zip = "retroarch-psc-%s.zip" % args.tag
     cores_tar = "libretro-cores-psc-%s.tar.gz" % args.tag
-    for name in (ra_zip, cores_tar):
-        if not os.path.isfile(os.path.join(args.release_dir, name)):
-            sys.exit("missing release asset: %s" % os.path.join(args.release_dir, name))
+    if not os.path.isfile(os.path.join(args.release_dir, ra_zip)):
+        sys.exit("missing release asset: %s" % os.path.join(args.release_dir, ra_zip))
+    # A RetroArch-only release (make package-retroarch) has no cores tarball: "cores" is null then.
+    with_cores = os.path.isfile(os.path.join(args.release_dir, cores_tar))
 
     ra_version = read_kv(args.retroarch_version_file)
     cores_version = read_kv(args.cores_version_file)
 
     cores = []
-    for name in enabled_cores(args.cores_file):
+    for name in enabled_cores(args.cores_file) if with_cores else []:
         so = "%s_libretro.so" % name
         path = os.path.join(args.cores_dir, so)
         if not os.path.isfile(path):
@@ -111,19 +114,22 @@ def main():
         "retroarch": dict(
             {"version": ra_version.get("retroarch_version", ""), "psc_build": ra_version.get("psc_build", "")},
             **asset(args.release_dir, ra_zip)),
-        "cores": dict(
+        "cores": None,
+    }
+    if with_cores:
+        manifest["cores"] = dict(
             {"libretro_super_commit": cores_version.get("libretro_super_commit_full", ""),
              "libretro_super_date": cores_version.get("libretro_super_date", ""),
              "count": len(cores)},
-            **asset(args.release_dir, cores_tar)),
-    }
-    manifest["cores"]["list"] = cores
+            **asset(args.release_dir, cores_tar))
+        manifest["cores"]["list"] = cores
 
     out = os.path.join(args.release_dir, "manifest.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
         f.write("\n")
-    print("wrote %s: RetroArch %s, %d cores" % (out, manifest["retroarch"]["version"], len(cores)))
+    print("wrote %s: RetroArch %s, %s" % (out, manifest["retroarch"]["version"],
+                                         "%d cores" % len(cores) if with_cores else "no cores"))
 
 
 if __name__ == "__main__":

@@ -90,6 +90,17 @@ produces, in `dist/release/`:
   and every core with its display name, system, extensions and database from its `.info`. **This is what
   AutoBleem's PC installer reads** to download and lay out a RetroArch on a stick.
 
+### Publishing
+
+The repository is private, so its GitHub releases cannot be downloaded anonymously; what the PC installer
+fetches is published on the organisation's GitHub Pages site instead: `make publish` copies
+`dist/release/` into a checkout of [autobleem.github.io](https://github.com/autobleem/autobleem.github.io)
+(`PAGES_DIR`, `../autobleem.github.io` by default) under `resources/retroarch-psc/` - every asset under its
+versioned name, `manifest.json` the latest, `manifest-<tag>.json` kept per release - and that checkout is
+committed and pushed by hand. The installer reads
+`https://autobleem.github.io/resources/retroarch-psc/manifest.json` and resolves the asset names against it.
+`make package-retroarch` makes a RetroArch-only release (`"cores": null`) when the cores are not wanted.
+
 ## CI (`.github/workflows/build.yml`)
 
 **Off for now** - every job is skipped until the repository variable `CI_ENABLED` is `true`; the builds

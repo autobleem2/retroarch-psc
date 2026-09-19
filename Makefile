@@ -1,6 +1,6 @@
 # RetroArch + libretro cores for the PlayStation Classic.
 #
-#   make retroarch            the retroarch binary -> dist/retroarch/
+#   make retroarch            the retroarch binary -> dist/retroarch/ (autobleem-build image; -ctng = Dockerfile toolchain)
 #   make cores                every core in cores/cores.txt -> dist/cores/ (parallel, skips what is built)
 #   make core CORE=snes9x     one core
 #   make package              dist/release/: retroarch-psc-<tag>.zip, libretro-cores-psc-<tag>.tar.gz,
@@ -56,7 +56,7 @@ BUILD_ARGS := $(if $(LIBRETRO_SUPER_REF),--build-arg LIBRETRO_SUPER_REF=$(LIBRET
 # The enabled cores, one per line
 ENABLED_CORES = sed 's/\#.*//' $(CORES_FILE) | tr -d ' \t' | grep -v '^$$'
 
-.PHONY: all docker-check image-base image-cores ensure-cores-image retroarch cores core parallel-build version-info core-info \
+.PHONY: all docker-check image-base image-cores ensure-cores-image retroarch retroarch-ctng cores core parallel-build version-info core-info \
         commits package package-retroarch publish release status retry-failed audit-cores check-version list shell clean distclean help
 
 all: retroarch cores
@@ -90,7 +90,22 @@ ensure-cores-image: docker-check
 # RetroArch
 # ------------------------------------------------------------------------------------------------
 
+# With AutoBleem's own console toolchain - the autobleem-build image (AutoBleem2/docker), the compiler and
+# sysroot pcsx-ab and the launcher are built with. retroarch/build.sh has the details; the RetroArch
+# checkout lives on in work/RetroArch, so a second run is incremental. AB_BUILD_IMAGE names the image.
+AB_BUILD_IMAGE ?= autobleem-build:latest
+JOBS ?= $(shell nproc)
 retroarch: docker-check
+	@$(DOCKER) image inspect $(AB_BUILD_IMAGE) >/dev/null 2>&1 || \
+		{ echo "Error: no $(AB_BUILD_IMAGE) image here - build it from AutoBleem2/docker, or use 'make retroarch-ctng'."; exit 1; }
+	$(DOCKER) run --rm -u root -v "$(PWD):$(PWD)" -w "$(PWD)" \
+		-e RETROARCH_VERSION=$(RA_VERSION) -e PSC_BUILD_NUM=$(BUILD_NUM) -e JOBS=$(JOBS) \
+		-e OUT_UID=$$(id -u) -e OUT_GID=$$(id -g) -e OUT_DIR=$(RA_OUT) \
+		$(AB_BUILD_IMAGE) retroarch/build.sh
+
+# The self-contained route: AutoBleem-NG's crosstool-ng toolchain (GCC 9 / glibc 2.23, built by the
+# Dockerfile's first stage, ~1 h the first time) - for a machine without the autobleem-build image.
+retroarch-ctng: docker-check
 	@mkdir -p $(RA_OUT)
 	DOCKER_BUILDKIT=1 $(DOCKER) build --target retroarch-out -o $(RA_OUT) \
 		--build-arg PSC_BUILD_NUM=$(BUILD_NUM) $(BUILD_ARGS) .

@@ -8,7 +8,7 @@ text with shadows over the dimmed wallpaper.
 |---|---|
 | `Autobleem2.png` | `retroarch/Retroarch themes/Autobleem2.png` - the wallpaper, 1280x720, made by `make_wallpaper.py` from AutoBleem2's `payload/themes/ab2/images/AB-EvoBack.jpg` |
 | `selawik-light.ttf`, `OFL.txt` | `retroarch/fonts/` - the ab2 theme's font (Microsoft's Selawik, SIL OFL) |
-| `retroarch-theme.cfg` | the keys to set in `retroarch/retroarch.cfg` |
+| `retroarch-psc.cfg` | the keys to set in `retroarch/retroarch.cfg` |
 
 Icons: RetroArch's own **RetroSystem** set (`retroarch/assets/xmb/retrosystem/`, `xmb_theme = "7"` in
 1.22.2), which a RetroBoot stick already has - 2020's copy, though, which lacks 19 icons 1.22.2 asks for
@@ -19,5 +19,5 @@ Master System - Mark III.png`, `NEC - PC Engine SuperGrafx.png`); they come from
 
 Why RetroBoot's theme came out wrong on 1.22.2: the icon-theme enum lost two entries (RetroActive,
 NeoActive), so its `xmb_theme = "8"` - RetroSystem in 1.9.0 - selects Monochrome Inverted now, dark icons
-on a dark wallpaper; and `menu_swap_ok_cancel_buttons` was renamed `input_menu_swap_ok_cancel_buttons`,
-so Circle became OK. `retroarch-theme.cfg` has the 1.22.2 values.
+on a dark wallpaper; and `quit_on_close_content` (new since 1.10, default "never") has to be 2 for Close Content to
+return to the launcher as 1.9.0 did. `retroarch-psc.cfg` has the 1.22.2 values.

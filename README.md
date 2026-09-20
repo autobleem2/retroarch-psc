@@ -97,6 +97,15 @@ ones left out - what `tools/check_cores.py` says cannot run on a stock console, 
 launchers; `make publish-cores` puts it at `https://autobleem.retromenele.pl/psc/cores/` (newest kept,
 `latest.json`).
 
+### The runtime libraries, for the apps
+
+Also from a RetroBoot stick: `make pack-retroboot-libs` (`tools/pack_retroboot_libs.py`) packs
+`retroboot/assets/lib` (what `init_libs.sh` puts on the apps' `LD_LIBRARY_PATH` - SDL2_image/mixer/net/
+ttf, SDL 1.2, FLAC, GL/GLU, boost, curl, freetype, jpeg, png16, tiff, vlc, vorbis, lzma) and
+`retroboot/lib` (liblzma and a GLIBCXX 3.4.25 libstdc++) into `libs-psc-<date>.tar.gz`, soname links
+included, with a JSON list; `make publish-libs` puts it at `psc/libs/`. None of the cores needs any of
+it; the apps on a stick do.
+
 ## Releases
 
 A release is a git tag `v<RetroArch version>-<build>` (`v1.22.2-1`, `v1.22.2-2`, ...): the frontend's

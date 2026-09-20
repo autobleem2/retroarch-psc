@@ -9,6 +9,7 @@
 #   make package-retroarch    the zip + manifest.json without cores (no cores image needed)
 #   make publish              dist/release/ -> https://autobleem.retromenele.pl/psc/retroarch/<tag>/ (via ../AutoBleem2)
 #   make pack-retroboot-cores | publish-cores   RetroBoot's cores from a stick -> psc/cores/ (until we build our own)
+#   make pack-retroboot-libs | publish-libs     RetroBoot's runtime libraries (its apps and ours need them) -> psc/libs/
 #   make status | retry-failed | audit-cores | check-version | shell | clean | distclean | help
 #
 # Knobs: PARALLEL (cores built at once), JOBS_PER_CORE, FORCE=1 (rebuild built cores), TAG (release
@@ -58,7 +59,7 @@ BUILD_ARGS := $(if $(LIBRETRO_SUPER_REF),--build-arg LIBRETRO_SUPER_REF=$(LIBRET
 ENABLED_CORES = sed 's/\#.*//' $(CORES_FILE) | tr -d ' \t' | grep -v '^$$'
 
 .PHONY: all docker-check image-base image-cores ensure-cores-image retroarch retroarch-ctng cores core parallel-build version-info core-info \
-        commits package package-retroarch publish pack-retroboot-cores publish-cores release status retry-failed audit-cores check-version list shell clean distclean help
+        commits package package-retroarch publish pack-retroboot-cores publish-cores pack-retroboot-libs publish-libs release status retry-failed audit-cores check-version list shell clean distclean help
 
 all: retroarch cores
 
@@ -308,6 +309,11 @@ publish:
 RETROBOOT_DIR ?= F:/retroarch
 pack-retroboot-cores:
 	python3 tools/pack_retroboot_cores.py "$(RETROBOOT_DIR)" --out $(RELEASE_DIR)
+pack-retroboot-libs:
+	python3 tools/pack_retroboot_libs.py "$(RETROBOOT_DIR)/retroboot" --out $(RELEASE_DIR)
+publish-libs:
+	@ls $(RELEASE_DIR)/libs-psc-*.tar.gz >/dev/null 2>&1 || { echo "Error: no libs tarball in $(RELEASE_DIR) (make pack-retroboot-libs)."; exit 1; }
+	$(AB2_DIR)/tools/repo_publish.sh $(PUBLISH_FLAGS) psc-libs $(RELEASE_DIR)/libs-psc-*.tar.gz $(RELEASE_DIR)/libs-psc-*.json
 publish-cores:
 	@ls $(RELEASE_DIR)/cores-psc-*.tar.gz >/dev/null 2>&1 || { echo "Error: no cores tarball in $(RELEASE_DIR) (make pack-retroboot-cores)."; exit 1; }
 	$(AB2_DIR)/tools/repo_publish.sh $(PUBLISH_FLAGS) psc-cores $(RELEASE_DIR)/cores-psc-*.tar.gz $(RELEASE_DIR)/cores-psc-*.json

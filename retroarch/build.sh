@@ -105,7 +105,7 @@ if [ ! -d "$SRC/.git" ]; then
     mkdir -p "$WORK"
     git clone --depth=1 --branch "$RETROARCH_VERSION" https://github.com/libretro/RetroArch.git "$SRC"
     git -C "$SRC" submodule update --init --recursive --depth 1
-    for p in wl_shell_fallback xmb_ribbon_drop_oes_derivatives_ext xmb_shader_pipeline_psc_limit alsa_force_s16_psc_mtk xz_core_loading; do
+    for p in wl_shell_fallback xmb_ribbon_drop_oes_derivatives_ext xmb_shader_pipeline_psc_limit alsa_force_s16_psc_mtk xz_core_loading psc_front_buttons; do
         echo "=== patch: $p ==="
         git -C "$SRC" apply "$ROOT/retroarch/patches/$p.patch"
     done
@@ -162,6 +162,12 @@ make HAVE_CLASSIC=1 HAVE_XZ_CORES=1 XZ_CORES_LIBS="-l:liblzma.a" \
 cd "$ROOT"
 mkdir -p "$OUT_DIR"
 cp "$SRC/retroarch" "$OUT_DIR/retroarch"
+# and a UPX-packed copy (the image has upx, the host may not): what the package ships, as AutoBleem's own
+# console binaries are packed - a third of the size, RetroBoot's build was packed the same way
+if command -v upx >/dev/null; then
+    cp "$OUT_DIR/retroarch" "$OUT_DIR/retroarch.upx"
+    upx -q --best --lzma "$OUT_DIR/retroarch.upx" >/dev/null
+fi
 printf 'retroarch_version=%s\npsc_build=%s\nbuild_date=%s\ntoolchain=autobleem-build-gcc6-glibc2.24\n' \
     "$RETROARCH_VERSION" "$PSC_BUILD_NUM" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$OUT_DIR/VERSION"
 if [ -n "${OUT_UID:-}" ]; then chown -R "$OUT_UID:${OUT_GID:-$OUT_UID}" "$OUT_DIR" "$WORK"; fi

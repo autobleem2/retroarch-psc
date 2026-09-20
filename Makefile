@@ -277,13 +277,20 @@ package: version-info core-info
 
 release: retroarch cores package
 
-# A RetroArch-only release: the zip + a manifest.json with "cores": null. Needs no cores image.
+# A RetroArch-only release: the zip (the UPX-packed binary build.sh made next to the stripped one, as
+# AutoBleem's own console binaries are packed - AB_NO_UPX=1 ships the stripped one) with the docs and
+# theme/, plus a manifest.json with "cores": null. Needs no cores image.
 package-retroarch:
 	@test -f $(RA_OUT)/retroarch || { echo "Error: no RetroArch binary. Run 'make retroarch' first."; exit 1; }
 	@rm -rf $(RELEASE_DIR) && mkdir -p $(RELEASE_DIR)
 	@echo "=== Packaging RetroArch ==="
-	@tmp=$$(mktemp -d) && cp $(RA_OUT)/retroarch $(RA_OUT)/VERSION "$$tmp/" && 		cp -r retroarch/docs "$$tmp/docs" && 		(cd "$$tmp" && zip -q -r "$(PWD)/$(RELEASE_DIR)/retroarch-psc-$(TAG).zip" .) && rm -rf "$$tmp"
-	@python3 tools/make_manifest.py --tag "$(TAG)" --release-dir $(RELEASE_DIR) 		--retroarch-version-file $(RA_OUT)/VERSION
+	@tmp=$$(mktemp -d) && cp $(RA_OUT)/VERSION "$$tmp/" && \
+		if [ -z "$(AB_NO_UPX)" ] && [ -f $(RA_OUT)/retroarch.upx ]; then cp $(RA_OUT)/retroarch.upx "$$tmp/retroarch"; \
+		else cp $(RA_OUT)/retroarch "$$tmp/retroarch"; fi && \
+		cp -r retroarch/docs "$$tmp/docs" && cp -r theme "$$tmp/theme" && \
+		(cd "$$tmp" && zip -q -r "$(PWD)/$(RELEASE_DIR)/retroarch-psc-$(TAG).zip" .) && rm -rf "$$tmp"
+	@python3 tools/make_manifest.py --tag "$(TAG)" --release-dir $(RELEASE_DIR) \
+		--retroarch-version-file $(RA_OUT)/VERSION
 	@ls -lh $(RELEASE_DIR)/
 
 # Publish dist/release/ to the download repository, https://autobleem.retromenele.pl/psc/retroarch/<tag>/,

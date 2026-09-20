@@ -311,6 +311,10 @@ RUN git apply /build/RetroArch/patches/alsa_force_s16_psc_mtk.patch
 COPY retroarch/patches/xz_core_loading.patch /build/RetroArch/patches/xz_core_loading.patch
 RUN git apply /build/RetroArch/patches/xz_core_loading.patch
 
+# The console's POWER button (KEY_SLEEP) as RetroArch's "power" key (patches/psc_front_buttons.patch).
+COPY retroarch/patches/psc_front_buttons.patch /build/RetroArch/patches/psc_front_buttons.patch
+RUN git apply /build/RetroArch/patches/psc_front_buttons.patch
+
 # Copy PSC-specific Makefile
 COPY retroarch/Makefile.psc /build/RetroArch/Makefile.psc
 

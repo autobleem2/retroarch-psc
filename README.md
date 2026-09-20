@@ -99,12 +99,15 @@ launchers; `make publish-cores` puts it at `https://autobleem.retromenele.pl/psc
 
 ### The runtime libraries, for the apps
 
-Also from a RetroBoot stick: `make pack-retroboot-libs` (`tools/pack_retroboot_libs.py`) packs
-`retroboot/assets/lib` (what `init_libs.sh` puts on the apps' `LD_LIBRARY_PATH` - SDL2_image/mixer/net/
-ttf, SDL 1.2, FLAC, GL/GLU, boost, curl, freetype, jpeg, png16, tiff, vlc, vorbis, lzma) and
-`retroboot/lib` (liblzma and a GLIBCXX 3.4.25 libstdc++) into `libs-psc-<date>.tar.gz`, soname links
-included, with a JSON list; `make publish-libs` puts it at `psc/libs/`. None of the cores needs any of
-it; the apps on a stick do.
+Also from a RetroBoot stick: `make pack-retroboot-libs RETROBOOT_DIR=F:/RetroArch/bin/retroboot`
+(`tools/pack_retroboot_libs.py`) packs `retroboot/assets/lib` (what `init_libs.sh` put on the apps'
+`LD_LIBRARY_PATH` - SDL2_image/mixer/net/ttf, SDL 1.2, FLAC, GL/GLU, boost, curl, freetype, jpeg, png16,
+tiff, vlc, vorbis, lzma), `retroboot/lib` (liblzma and a GLIBCXX 3.4.25 libstdc++) and `retroboot/modules`
+(xpad.ko) into `libs-psc-<date>.tar.gz` as `apps/`, `retroarch/` and `modules/` - the folders AutoBleem's
+stick keeps them in under `Autobleem/lib/` (its `rc/app_env.sh` links `apps/` into `/tmp/applib` with the
+soname links for an App, `rc/launch_rb.sh` puts `retroarch/` on RetroArch's path when it is there,
+`rc/boot.sh` loads `modules/`) - with a JSON list; `make publish-libs` puts it at `psc/libs/`. None of
+the cores needs any of it, and neither does our RetroArch; the apps on a stick do.
 
 ## Releases
 

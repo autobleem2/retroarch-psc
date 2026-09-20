@@ -7,11 +7,13 @@ RetroBoot's `init_libs.sh` links `retroboot/assets/lib/*` into /tmp/rblib (LD_LI
 EmulationStation and the apps: SDL2_image/mixer/net/ttf, SDL 1.2, FLAC, GL/GLU, boost, curl, freetype,
 jpeg, png16, tiff, vlc, vorbis, lzma) and `retroboot/lib/*` (liblzma, a GLIBCXX 3.4.25 libstdc++) onto
 every RetroArch launch. None of the cores needs either, but the Apps on a stick do (eduke32,
-shadowwarrior, opentyrian, sdlpop, wolf4sdl launch into RetroBoot's apps/; amiberry and doom want
-SDL2_image/ttf the firmware has not got) - so a stick without RetroBoot gets them from this tarball:
-`lib/` (assets/lib, with the unversioned and soname links init_libs.sh would make) and `lib-retroarch/`
-(retroboot/lib), plus libs-psc-<date>.json listing every file with its soname, size, sha256 and what it
-needs. Named libs-psc-<YYYYMMDD>.tar.gz; the repository keeps the newest.
+shadowwarrior, opentyrian, sdlpop, wolf4sdl want them on their path) - so a stick without RetroBoot
+gets them from this tarball, laid out as AutoBleem's stick keeps them under Autobleem/lib/: `apps/`
+(assets/lib - rc/app_env.sh links them into /tmp/applib with the soname links init_libs.sh would make),
+`retroarch/` (retroboot/lib - rc/launch_rb.sh puts it on RetroArch's path when it is there) and
+`modules/` (retroboot/modules: xpad.ko, the Xbox pad driver, loaded by rc/boot.sh), plus
+libs-psc-<date>.json listing every file with its soname, size, sha256 and what it needs. Named
+libs-psc-<YYYYMMDD>.tar.gz; the repository keeps the newest.
 """
 import argparse
 import datetime
@@ -82,8 +84,12 @@ def main():
     ap.add_argument("--date", default=datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d"))
     args = ap.parse_args()
 
-    groups = (("lib", os.path.join(args.retroboot_dir, "assets", "lib"), "init_libs.sh's /tmp/rblib - EmulationStation and the apps"),
-              ("lib-retroarch", os.path.join(args.retroboot_dir, "lib"), "retroboot/lib - on LD_LIBRARY_PATH for every RetroArch launch"))
+    groups = (("apps", os.path.join(args.retroboot_dir, "assets", "lib"),
+               "Autobleem/lib/apps - the Apps' libraries (was init_libs.sh's /tmp/rblib), rc/app_env.sh links them into /tmp/applib"),
+              ("retroarch", os.path.join(args.retroboot_dir, "lib"),
+               "Autobleem/lib/retroarch - on RetroArch's LD_LIBRARY_PATH when present (was retroboot/lib; our RetroArch needs none of it)"),
+              ("modules", os.path.join(args.retroboot_dir, "modules"),
+               "Autobleem/lib/modules - kernel modules rc/boot.sh loads (xpad.ko, was retroboot/modules)"))
     entries = []
     os.makedirs(args.out, exist_ok=True)
     tar_name = "libs-psc-%s.tar.gz" % args.date
@@ -96,15 +102,16 @@ def main():
                     continue
                 e = {"group": arc, "file": name, "size": os.path.getsize(path), "sha256": sha256_of(path)}
                 e.update(elf_facts(path))
-                e["links"] = link_names(name)
+                e["links"] = link_names(name) if name.endswith(".so") or ".so." in name else []
                 entries.append(e)
                 tar.add(path, arcname="%s/%s" % (arc, name))
                 for link in e["links"]:
-                    ti = tarfile.TarInfo("%s/%s" % (arc, link))
+                    ti = tarfile.TarInfo("%s/%s" % (arc, link)) # what rc/app_env.sh makes on the console anyway
                     ti.type = tarfile.SYMTYPE
                     ti.linkname = name
                     tar.addfile(ti)
-        manifest = {"schema": 1, "target": "psc", "source": "RetroBoot 1.2", "date": args.date,
+        manifest = {"schema": 2, "target": "psc", "source": "RetroBoot 1.2", "date": args.date,
+                "layout": "unpack into Autobleem/lib/ on the stick",
                     "groups": {arc: what for arc, _s, what in groups}, "count": len(entries), "libs": entries}
         text = json.dumps(manifest, indent=2, ensure_ascii=False).encode("utf-8")
         ti = tarfile.TarInfo("libs.json")

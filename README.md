@@ -62,6 +62,14 @@ dependencies are satisfied by the stock firmware.
 `RETROARCH_VERSION` at the top of the Dockerfile is the RetroArch tag built (`make retroarch
 RETROARCH_VERSION=v1.23.0` to try another).
 
+## The XMB theme
+
+`theme/`: the AutoBleem 2 look for 1.22.2's XMB - the wallpaper (`make_wallpaper.py` from the ab2
+theme's background), Selawik Light, the RetroSystem icons, and `retroarch-theme.cfg` with the keys that
+changed meaning since RetroBoot's 1.9.0 (its `xmb_theme = "8"` is Monochrome Inverted now, RetroSystem is
+7; `menu_swap_ok_cancel_buttons` became `input_menu_swap_ok_cancel_buttons`). `theme/README.md` says what
+goes where; the installer will apply it.
+
 ## Cores
 
 `cores/cores.txt` is the list AutoBleem ships - the cores RetroBoot 1.2 shipped for the console, so they

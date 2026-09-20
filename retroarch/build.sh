@@ -165,8 +165,14 @@ cp "$SRC/retroarch" "$OUT_DIR/retroarch"
 # and a UPX-packed copy (the image has upx, the host may not): what the package ships, as AutoBleem's own
 # console binaries are packed - a third of the size, RetroBoot's build was packed the same way
 if command -v upx >/dev/null; then
-    cp "$OUT_DIR/retroarch" "$OUT_DIR/retroarch.upx"
-    upx -q --best --lzma "$OUT_DIR/retroarch.upx" >/dev/null
+    # packed in /tmp: on the bind-mounted output directory upx left a 272-byte .000 and an unpacked copy
+    cp "$OUT_DIR/retroarch" /tmp/retroarch.upx
+    if upx -q --best --lzma /tmp/retroarch.upx >/dev/null; then
+        mv /tmp/retroarch.upx "$OUT_DIR/retroarch.upx"
+    else
+        echo "warning: upx failed, no packed copy" >&2
+        rm -f /tmp/retroarch.upx "$OUT_DIR/retroarch.upx"
+    fi
 fi
 printf 'retroarch_version=%s\npsc_build=%s\nbuild_date=%s\ntoolchain=autobleem-build-gcc6-glibc2.24\n' \
     "$RETROARCH_VERSION" "$PSC_BUILD_NUM" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$OUT_DIR/VERSION"

@@ -8,6 +8,7 @@
 #   make release              everything above
 #   make package-retroarch    the zip + manifest.json without cores (no cores image needed)
 #   make publish              dist/release/ -> https://autobleem.retromenele.pl/psc/retroarch/<tag>/ (via ../AutoBleem2)
+#   make pack-retroboot-cores | publish-cores   RetroBoot's cores from a stick -> psc/cores/ (until we build our own)
 #   make status | retry-failed | audit-cores | check-version | shell | clean | distclean | help
 #
 # Knobs: PARALLEL (cores built at once), JOBS_PER_CORE, FORCE=1 (rebuild built cores), TAG (release
@@ -57,7 +58,7 @@ BUILD_ARGS := $(if $(LIBRETRO_SUPER_REF),--build-arg LIBRETRO_SUPER_REF=$(LIBRET
 ENABLED_CORES = sed 's/\#.*//' $(CORES_FILE) | tr -d ' \t' | grep -v '^$$'
 
 .PHONY: all docker-check image-base image-cores ensure-cores-image retroarch retroarch-ctng cores core parallel-build version-info core-info \
-        commits package package-retroarch publish release status retry-failed audit-cores check-version list shell clean distclean help
+        commits package package-retroarch publish pack-retroboot-cores publish-cores release status retry-failed audit-cores check-version list shell clean distclean help
 
 all: retroarch cores
 
@@ -294,6 +295,15 @@ publish:
 	@test -f $(RELEASE_DIR)/manifest.json || { echo "Error: nothing in $(RELEASE_DIR). Run 'make package' or 'make package-retroarch' first."; exit 1; }
 	@test -x $(AB2_DIR)/tools/repo_publish.sh || { echo "Error: $(AB2_DIR)/tools/repo_publish.sh not found (AB2_DIR=...)."; exit 1; }
 	$(AB2_DIR)/tools/repo_publish.sh $(PUBLISH_FLAGS) psc-retroarch $(TAG) $(RELEASE_DIR)/retroarch-psc-$(TAG).zip $(RELEASE_DIR)/manifest.json
+
+# The console's cores until we build our own: RetroBoot 1.2's, packed from a stick (RETROBOOT_DIR = its
+# retroarch/ folder) by tools/pack_retroboot_cores.py, and published to psc/cores/ (newest date kept).
+RETROBOOT_DIR ?= F:/retroarch
+pack-retroboot-cores:
+	python3 tools/pack_retroboot_cores.py "$(RETROBOOT_DIR)" --out $(RELEASE_DIR)
+publish-cores:
+	@ls $(RELEASE_DIR)/cores-psc-*.tar.gz >/dev/null 2>&1 || { echo "Error: no cores tarball in $(RELEASE_DIR) (make pack-retroboot-cores)."; exit 1; }
+	$(AB2_DIR)/tools/repo_publish.sh $(PUBLISH_FLAGS) psc-cores $(RELEASE_DIR)/cores-psc-*.tar.gz $(RELEASE_DIR)/cores-psc-*.json
 
 # ------------------------------------------------------------------------------------------------
 # Information

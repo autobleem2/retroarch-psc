@@ -86,6 +86,16 @@ rules the pinned checkout has.
 A built core records where it came from (`build_metadata/commits/<core>_libretro.so.commit`, aggregated
 into `COMMITS.txt`), and `make cores` skips a core whose recorded libretro-super commit is the current pin.
 
+### The console's cores, for now
+
+The cores are not built here yet; the console gets **RetroBoot 1.2's** (KMFD's `km_*` builds, which the
+RetroArch build loads xz-compressed as they are). `make pack-retroboot-cores RETROBOOT_DIR=F:/retroarch`
+(`tools/pack_retroboot_cores.py`) packs a stick's `cores/` + `info/` into `cores-psc-<date>.tar.gz` with a
+`cores-psc-<date>.json` listing every core (sizes, sha256, the glibc it needs, GL, display name) and the
+ones left out - what `tools/check_cores.py` says cannot run on a stock console, and RetroBoot's own app
+launchers; `make publish-cores` puts it at `https://autobleem.retromenele.pl/psc/cores/` (newest kept,
+`latest.json`).
+
 ## Releases
 
 A release is a git tag `v<RetroArch version>-<build>` (`v1.22.2-1`, `v1.22.2-2`, ...): the frontend's

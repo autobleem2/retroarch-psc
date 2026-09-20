@@ -1,34 +1,37 @@
 From: AutoBleem <autobleem@retromenele.pl>
-Subject: [PATCH] input_keymaps: the PlayStation Classic's POWER button (KEY_SLEEP) as the "power" key
+Subject: [PATCH] input_keymaps: the PlayStation Classic's front buttons as RetroArch keys
 
 The console's front buttons are keyboard keys: POWER is KEY_SLEEP (SDL: SDL_SCANCODE_SLEEP), RESET is
 KEY_PLAYPAUSE ("play" in RetroArch's key names), OPEN is KEY_EJECTCD. RetroArch maps only KEY_POWER to
-RETROK_POWER, so RetroBoot's `input_exit_emulator = "power"` never matched the button on a stock build.
-KEY_SLEEP (udev) and SDLK_SLEEP (the sdl2 input driver) are RETROK_POWER too now; with
-`input_exit_emulator = "power"` POWER quits RetroArch - the launcher takes over - and with
-`input_menu_toggle = "play"` RESET opens the menu over the game.
+RETROK_POWER and nothing to KEY_EJECTCD, so two of the three could not be bound on a stock build.
+KEY_SLEEP / SDLK_SLEEP are RETROK_POWER ("power") now and KEY_EJECTCD / SDLK_EJECT are RETROK_LAUNCH_MEDIA
+("media"). AutoBleem's cfg binds RESET as input_exit_emulator ("play" - quits RetroArch, the launcher takes
+over) and OPEN as input_menu_toggle ("media" - RetroArch's menu over the game); POWER stays the console's.
 ---
 diff --git a/input/input_keymaps.c b/input/input_keymaps.c
-index 972acc2..dc892c8 100644
+index 972acc2..0dee8c7 100644
 --- a/input/input_keymaps.c
 +++ b/input/input_keymaps.c
-@@ -792,6 +792,10 @@ const struct rarch_key_map rarch_key_map_sdl[] = {
+@@ -792,6 +792,11 @@ const struct rarch_key_map rarch_key_map_sdl[] = {
     { SDLK_PAUSE, RETROK_BREAK },
     { SDLK_MENU, RETROK_MENU },
     { SDLK_POWER, RETROK_POWER },
 +#ifdef HAVE_SDL2 /* SDLK_SLEEP is an enumerator, not a macro */
 +   /* the PlayStation Classic's POWER button (KEY_SLEEP) through SDL */
 +   { SDLK_SLEEP, RETROK_POWER },
++   { SDLK_EJECT, RETROK_LAUNCH_MEDIA },
 +#endif
  
  #ifndef HAVE_SDL2
     { SDLK_EURO, RETROK_EURO },
-@@ -1358,6 +1362,8 @@ const struct rarch_key_map rarch_key_map_linux[] = {
+@@ -1358,6 +1363,10 @@ const struct rarch_key_map rarch_key_map_linux[] = {
     { KEY_BREAK, RETROK_BREAK },
     { KEY_MENU, RETROK_MENU },
     { KEY_POWER, RETROK_POWER },
 +   /* the PlayStation Classic's POWER button is KEY_SLEEP: the same "power" key name */
 +   { KEY_SLEEP, RETROK_POWER },
++   /* ... and its OPEN button is KEY_EJECTCD: the "media" key name */
++   { KEY_EJECTCD, RETROK_LAUNCH_MEDIA },
  #ifndef ANDROID
     { KEY_EURO, RETROK_EURO },
  #endif

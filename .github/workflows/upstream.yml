@@ -1,0 +1,199 @@
+# Follow upstream RetroArch's releases: when libretro/RetroArch publishes a release newer than the one the
+# Dockerfile pins (ARG RETROARCH_VERSION), build it for the console with our patches, release it here as
+# v<version>-<n> and publish it to the download site's psc/retroarch/ - where AutoBleemInstaller.exe and the
+# page take it from. Release tags only, never upstream master (the owner's call, 2026-09-23: only a tested
+# upstream release reaches a console).
+#
+#   check    the newest upstream release (or the dispatch's `version`) against the pin and this repo's tags:
+#            a version with no v<version>-<n> tag yet, and not older than the pin, is built; `force`
+#            rebuilds one as the next <n>
+#   build    `make retroarch` on a hosted runner in ghcr.io/autobleem2/autobleem-build (the Stretch gcc-6 +
+#            glibc 2.24 toolchain pcsx-ab and the launcher use), the six patches applied by
+#            retroarch/build.sh - one that no longer applies stops the run here and opens an issue - then
+#            the console's limits checked (nothing above GLIBC_2.24) and `make package-retroarch`
+#   release  the Dockerfile pin bumped on main, the tag, a GitHub release with the zip and manifest.json
+#   publish  psc/retroarch/<tag>/ on the site (self-hosted: the site is the build server's disk), through
+#            autobleem2/autobleem-repo's repo_publish.sh; the site keeps the newest build only
+#
+# The cores are not rebuilt here (the console still gets RetroBoot 1.2's, psc/cores/ - build.yml's cores
+# jobs stay off). Gated by AB_CI_ENABLED like every autobleem2 repository.
+name: upstream
+
+on:
+  schedule:
+    - cron: '41 4 * * *'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: RetroArch release tag to build (e.g. v1.22.2; empty = upstream's latest release)
+        type: string
+        default: ''
+      force:
+        description: build it again even though a v<version>-<n> tag exists (the next <n>)
+        type: boolean
+        default: false
+      release:
+        description: tag and release the build (off = a dry run that stops after the build)
+        type: boolean
+        default: true
+      publish:
+        description: publish to the download site
+        type: boolean
+        default: true
+
+concurrency:
+  group: upstream
+  cancel-in-progress: false
+
+env:
+  AB_BUILD_IMAGE: ghcr.io/autobleem2/autobleem-build:latest
+
+jobs:
+  check:
+    if: vars.AB_CI_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    outputs:
+      build: ${{ steps.c.outputs.build }}
+      version: ${{ steps.c.outputs.version }}
+      tag: ${{ steps.c.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: c
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pinned="$(grep -oP '^ARG RETROARCH_VERSION=\K\S+' Dockerfile)"
+          want='${{ inputs.version }}'
+          explicit=true
+          if [ -z "$want" ]; then
+            explicit=false
+            want="$(gh api repos/libretro/RetroArch/releases/latest --jq .tag_name)"
+          fi
+          [[ "$want" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::not a RetroArch release tag: '$want'"; exit 1; }
+          n="$(git tag -l "$want-*" | sed "s/^$want-//" | grep -E '^[0-9]+$' | sort -n | tail -1 || true)"
+          build=false
+          if [ -n "$n" ]; then
+            if [ '${{ inputs.force }}' = true ]; then build=true; n=$((n + 1)); fi
+            echo "RetroArch $want is built already ($want-$n)"
+          else
+            n=1
+            newest="$(printf '%s\n%s\n' "$pinned" "$want" | sort -V | tail -1)"
+            if [ "$explicit" = true ] || [ "$newest" = "$want" ]; then build=true; fi
+          fi
+          echo "upstream: $want, pinned: $pinned, build: $build ($want-$n)" | tee -a "$GITHUB_STEP_SUMMARY"
+          { echo "build=$build"; echo "version=$want"; echo "tag=$want-$n"; } >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read
+      issues: write
+    env:
+      V: ${{ needs.check.outputs.version }}
+      TAG: ${{ needs.check.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: docker pull "$AB_BUILD_IMAGE"
+      - name: Build RetroArch ${{ needs.check.outputs.version }} with the PSC patches
+        run: make retroarch RETROARCH_VERSION="$V" TAG="$TAG" AB_BUILD_IMAGE="$AB_BUILD_IMAGE"
+      - name: Check the binary against the console (glibc 2.24, ARM hard-float)
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -qq binutils-arm-linux-gnueabihf >/dev/null
+          cat dist/retroarch/VERSION
+          arm-linux-gnueabihf-readelf -A dist/retroarch/retroarch | grep -E 'Tag_CPU_arch|Tag_ABI_VFP_args'
+          glibc="$(arm-linux-gnueabihf-readelf -V dist/retroarch/retroarch | grep -oE 'GLIBC_[0-9.]+' | sort -uV | tail -1)"
+          echo "highest glibc symbol: $glibc"
+          [ "$(printf '%s\n%s\n' "$glibc" GLIBC_2.24 | sort -V | tail -1)" = GLIBC_2.24 ] \
+            || { echo "::error::needs $glibc - the console has glibc 2.24"; exit 1; }
+      - name: Package
+        run: make package-retroarch TAG="$TAG"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: dist/release
+          retention-days: 30
+      - name: Open an issue (the patches or the build failed on this RetroArch)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="RetroArch $V: the PSC build failed"
+          if [ -z "$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number --jq '.[].number')" ]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "Upstream released $V; building it for the console with retroarch/patches failed - most likely a patch that no longer applies. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. The daily check keeps trying until $V is built or the pin moves past it."
+          fi
+
+  release:
+    needs: [check, build]
+    if: github.event_name == 'schedule' || inputs.release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      V: ${{ needs.check.outputs.version }}
+      TAG: ${{ needs.check.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: dist/release
+      - name: Pin, tag and release ${{ needs.check.outputs.tag }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "$(grep -oP '^ARG RETROARCH_VERSION=\K\S+' Dockerfile)" != "$V" ] && \
+             [ "$(printf '%s\n%s\n' "$(grep -oP '^ARG RETROARCH_VERSION=\K\S+' Dockerfile)" "$V" | sort -V | tail -1)" = "$V" ]; then
+            sed -i "s/^ARG RETROARCH_VERSION=.*/ARG RETROARCH_VERSION=$V/" Dockerfile
+            git commit -q -am "RetroArch $V - the upstream release, built for the console by CI"
+            git push origin HEAD:main
+          fi
+          git tag -a "$TAG" -m "RetroArch $V for the PlayStation Classic, build ${TAG##*-}"
+          git push origin "$TAG"
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "RetroArch for the PSC $TAG" \
+            --notes "RetroArch $V (upstream release) with the PSC patches, built by CI. Published to https://autobleem.retromenele.pl/psc/retroarch/$TAG/ - AutoBleemInstaller.exe installs it." \
+            dist/release/*
+
+  publish:
+    # the site's psc/retroarch/, on the build server's disk: the self-hosted runner, a sibling container over
+    # the mounted docker.sock (that runner is itself a container and will not nest a `container:` job)
+    needs: [check, release]
+    if: github.event_name == 'schedule' || inputs.publish
+    runs-on: [self-hosted, linux, x64]
+    env:
+      AB_REPO_DIR: /home/claude/autobleem-repo
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: autobleem2/autobleem-repo
+          path: autobleem-repo-tools
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: dist/release
+      - name: Publish psc/retroarch/${{ needs.check.outputs.tag }}
+        run: |
+          set -euo pipefail
+          T='${{ needs.check.outputs.tag }}'
+          docker run --rm -v "$PWD:$PWD" -w "$PWD" -v "$AB_REPO_DIR:$AB_REPO_DIR" -e REPO_DIR="$AB_REPO_DIR" \
+            "$AB_BUILD_IMAGE" \
+            bash autobleem-repo-tools/tools/repo_publish.sh --local psc-retroarch "$T" \
+              "dist/release/retroarch-psc-$T.zip" dist/release/manifest.json

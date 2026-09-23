@@ -9,7 +9,7 @@
 #   cores      cores/cores.txt split into SHARDS slices, one runner each, all pulling the image.
 #   package    the two archives + manifest.json (make package); on a v* tag also a draft GitHub release.
 #
-# Triggers: a push to main and a pull request build the image and RetroArch (cheap once cached); a v* tag
+# Triggers: a push to develop or main and a pull request build the image and RetroArch (cheap once cached); a v* tag
 # builds everything and drafts the release; "Run workflow" chooses (all cores, or a few by name).
 #
 # Everything is behind the repository variable CI_ENABLED (Settings -> Secrets and variables -> Actions ->
@@ -20,7 +20,7 @@ name: build
 
 on:
   push:
-    branches: [main]
+    branches: [develop, main]
     tags: ['v*']
   pull_request:
   workflow_dispatch:

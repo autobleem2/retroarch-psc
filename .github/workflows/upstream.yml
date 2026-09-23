@@ -168,7 +168,7 @@ jobs:
              [ "$(printf '%s\n%s\n' "$(grep -oP '^ARG RETROARCH_VERSION=\K\S+' Dockerfile)" "$V" | sort -V | tail -1)" = "$V" ]; then
             sed -i "s/^ARG RETROARCH_VERSION=.*/ARG RETROARCH_VERSION=$V/" Dockerfile
             git commit -q -am "RetroArch $V - the upstream release, built for the console by CI"
-            git push origin HEAD:main
+            git push origin HEAD:develop # main moves only with a release merge
           fi
           git tag -a "$TAG" -m "RetroArch $V for the PlayStation Classic, build ${TAG##*-}"
           git push origin "$TAG"

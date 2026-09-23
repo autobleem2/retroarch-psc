@@ -120,7 +120,11 @@ jobs:
           [ "$(printf '%s\n%s\n' "$glibc" GLIBC_2.24 | sort -V | tail -1)" = GLIBC_2.24 ] \
             || { echo "::error::needs $glibc - the console has glibc 2.24"; exit 1; }
       - name: Package
-        run: make package-retroarch TAG="$TAG"
+        run: |
+          # the build ran as root in its container, which made dist/ root's (build.sh hands back only
+          # dist/retroarch) - package-retroarch's mkdir dist/release needs it back
+          sudo chown -R "$(id -u):$(id -g)" dist
+          make package-retroarch TAG="$TAG"
       - uses: actions/upload-artifact@v4
         with:
           name: release

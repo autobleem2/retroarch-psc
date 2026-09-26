@@ -24,9 +24,11 @@ make retry-failed         # rebuild the cores that failed last time
 make help                 # the rest
 ```
 
-Requirements: Docker (BuildKit - any current version) and GNU make. The first build compiles the
-crosstool-ng toolchain (about an hour); every later build takes it from the Docker cache. Each core is
-built in its own container from the `cores` image, `PARALLEL` at a time (default half the CPUs).
+Requirements: Docker (BuildKit - any current version) and GNU make. By default, the build uses the
+[autobleem-build](https://github.com/autobleem2/autobleem-build) Docker image (which carries the console's
+Debian Stretch GCC 6 toolchain). Alternatively, pass `make retroarch -ctng` to build the crosstool-ng
+toolchain locally (about an hour the first time); every later build takes it from the Docker cache. Each
+core is built in its own container from the `cores` image, `PARALLEL` at a time (default half the CPUs).
 
 `make cores CORES_IMAGE=ghcr.io/autobleem/retroarch-psc/cores:latest` uses the image the CI pushed instead
 of building one locally (`docker pull` it first, or log in to ghcr.io).
@@ -124,8 +126,7 @@ produces, in `dist/release/`:
 
 ### Publishing
 
-The repository is private, so its GitHub releases cannot be downloaded anonymously; what the PC installer
-fetches is on AutoBleem's download repository instead, `https://autobleem.retromenele.pl/psc/retroarch/`:
+The release packages are published to AutoBleem's download repository at `https://autobleem.retromenele.pl/psc/retroarch/`.
 `make publish` runs AutoBleem2's `tools/repo_publish.sh psc-retroarch <tag> <zip> manifest.json` (`AB2_DIR`,
 `../AutoBleem2` by default - rsync to the build server, `.sha256` sidecars, the index rerun there), which
 lands the files in `psc/retroarch/<tag>/` and writes `psc/retroarch/latest.json` (the zip's url, size and

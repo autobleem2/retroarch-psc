@@ -29,7 +29,6 @@ Requirements: Docker (BuildKit - any current version) and GNU make. By default, 
 Debian Stretch GCC 6 toolchain). Alternatively, use `make retroarch-ctng` to build the crosstool-ng
 toolchain locally (about an hour the first time); every later build takes it from the Docker cache. Each
 core is built in its own container from the `cores` image, `PARALLEL` at a time (default half the CPUs).
-(Makefile line 98-110)
 
 `make cores CORES_IMAGE=ghcr.io/autobleem/retroarch-psc/cores:latest` uses the image the CI pushed instead
 of building one locally (`docker pull` it first, or log in to ghcr.io).

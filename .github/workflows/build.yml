@@ -12,9 +12,9 @@
 # Triggers: a push to develop or main and a pull request build the image and RetroArch (cheap once cached); a v* tag
 # builds everything and drafts the release; "Run workflow" chooses (all cores, or a few by name).
 #
-# Everything is behind the repository variable CI_ENABLED (Settings -> Secrets and variables -> Actions ->
-# Variables): until it is `true` every run is skipped. Off for now - the builds are made on the build
-# server with the Makefile (the owner's call, 2026-09-19).
+# Everything is behind the repository variable AB_CI_ENABLED (Settings -> Secrets and variables -> Actions ->
+# Variables), like every autobleem2 repository: until it is `true` every run is skipped. The builds have
+# also been made on the build server with the Makefile (the owner's call, 2026-09-19).
 
 name: build
 
@@ -48,7 +48,7 @@ concurrency:
 
 jobs:
   image:
-    if: vars.CI_ENABLED == 'true'
+    if: vars.AB_CI_ENABLED == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read

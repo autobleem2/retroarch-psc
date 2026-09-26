@@ -135,8 +135,8 @@ cores are not wanted.
 
 ## CI (`.github/workflows/build.yml`)
 
-**Off for now** - every job is skipped until the repository variable `CI_ENABLED` is `true`; the builds
-are made on the build server with the Makefile. When it is on: a push or pull request builds the cores image (pushed to `ghcr.io/autobleem/retroarch-psc/cores`, with
+Gated by the repository variable `AB_CI_ENABLED`, like every autobleem2 repository: every job is skipped
+until it is `true`. The builds have also been made on the build server with the Makefile. When it is on: a push or pull request builds the cores image (pushed to `ghcr.io/autobleem/retroarch-psc/cores`, with
 a registry cache so the toolchain stage is built once) and RetroArch. A `v*` tag, or "Run workflow", also
 builds every core - `cores.txt` dealt round-robin over `shards` GitHub-hosted runners (16 by default; a
 dispatch can name a few cores instead) - and packages; on a tag the packages go onto a **draft** GitHub

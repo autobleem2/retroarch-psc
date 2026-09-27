@@ -37,12 +37,15 @@ PSC firmware ships `libstdc++.so.6.0.22` with `GLIBCXX_3.4.22`. Older RetroBoot 
 ```ini
 input_driver = "udev"
 input_autodetect_enable = true
-joypad_autoconfig_dir = "/media/retroarch/autoconfig"
+joypad_autoconfig_dir = "/media/RetroArch/bin/autoconfig"
 ```
 
 ## Troubleshooting
 
-Log: `/media/retroarch/logs/retroarch.log` (enable via `log_verbosity = "true"` and `log_to_file = "true"`).
+Log: `retroarch.log` in the runtime logs dir (`/tmp/autobleem/logs/retroarch.log` on the console, or
+`System/Logs/retroarch.log` when logs are kept) - AutoBleem's own `Autobleem/rc/launch_rb.sh` runs
+RetroArch with `--verbose` and redirects its output there itself; retroarch.cfg's own `log_verbosity` /
+`log_to_file` keys are not set on this stick.
 
 | Symptom | Likely cause |
 |---------|--------------|

@@ -177,11 +177,11 @@ jobs:
             dist/release/*
 
   publish:
-    # the site's psc/retroarch/, on the build server's disk: the self-hosted runner, a sibling container over
+    # the site's psc/retroarch/, on the build server's disk: the psc-build runner, a sibling container over
     # the mounted docker.sock (that runner is itself a container and will not nest a `container:` job)
     needs: [check, release]
     if: github.event_name == 'schedule' || inputs.publish
-    runs-on: [self-hosted, linux, x64]
+    runs-on: [self-hosted, psc-build]
     env:
       AB_REPO_DIR: /home/claude/autobleem-repo
     steps:

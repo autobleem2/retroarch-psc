@@ -137,6 +137,15 @@ def analyse(path):
     return r
 
 
+def check_databases(infos, allow):
+    """The launcher finds a core's platform only through the .info's `database`: a core with none vanishes from
+    it. `infos` maps a core file stem to its parsed .info fields; `allow` is the set of stems (with or without the
+    km_ prefix) that have none on purpose (info_fixes.json, no_database_ok). Returns the stems that fail."""
+    allowed = {a[3:] if a.startswith("km_") else a for a in allow}
+    return sorted(s for s, d in infos.items()
+                  if not d.get("database") and (s[3:] if s.startswith("km_") else s) not in allowed)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("cores_dir")

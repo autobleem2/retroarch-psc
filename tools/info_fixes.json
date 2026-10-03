@@ -1,0 +1,20 @@
+{
+  "_about": "Per core file stem (without _libretro): the .info fields pack_retroboot_cores.py sets while packing. Database names are libretro-database's rdb names; Mega Duck and Super Bros War and Jump 'n Bump have no rdb (a playlist without thumbnails).",
+  "fixes": {
+    "km_puae_xtreme":          {"database": "Commodore - Amiga"},
+    "km_puae_xtreme_accuracy": {"database": "Commodore - Amiga"},
+    "km_puae_xtreme_amped":    {"database": "Commodore - Amiga"},
+    "km_uae4arm":              {"database": "Commodore - Amiga"},
+    "km_uae4arm_xtreme":       {"database": "Commodore - Amiga"},
+    "km_hatari":               {"database": "Atari - ST"},
+    "km_quasi88":              {"database": "NEC - PC-8001 - PC-8801"},
+    "km_jumpnbump":            {"database": "Jump 'n Bump", "systemname": "Jump 'n Bump"},
+    "sameduck":                {"database": "Mega Duck"},
+    "km_superbroswar":         {"database": "Super Bros War", "systemname": "Super Bros War"}
+  },
+  "no_database_ok": {
+    "_about": "Cores whose .info has no database on purpose; the pack check (check_cores.check_databases) lets only these through.",
+    "non_game": ["ffmpeg", "gme", "pocketcdg", "redbook", "vemulator", "2048", "gong"],
+    "fbalpha2012": ["fbalpha2012", "fbalpha2012_cps1", "fbalpha2012_cps2", "fbalpha2012_cps3", "fbalpha2012_neogeo"]
+  }
+}

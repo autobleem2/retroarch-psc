@@ -86,6 +86,16 @@ rest libretro-super's fetched branch). `LIBRETRO_SUPER_REF` in the Dockerfile pi
 `make check-version` compares both pins with upstream, `make audit-cores` compares `cores.txt` with the
 rules the pinned checkout has.
 
+RetroBoot's cores are packed by `tools/pack_retroboot_cores.py` (`make pack-retroboot-cores`, from a stick, or
+`--from-tarball cores-psc-<date>.tar.gz` to repack a published tarball). The launcher finds a core's platform only
+through its `.info`'s `database`, so `tools/info_fixes.json` sets what RetroBoot's files lack while packing (the
+patched `.info` goes into the tarball, the core gets `"info_fixed": true` in `cores.json`): Amiga (`km_puae_xtreme`,
+`_accuracy`, `_amped`, `km_uae4arm`, `km_uae4arm_xtreme`) -> `Commodore - Amiga`; `km_hatari` -> `Atari - ST`;
+`km_quasi88` -> `NEC - PC-8001 - PC-8801`; `sameduck` -> `Mega Duck`; `km_jumpnbump` -> `Jump 'n Bump` and
+`km_superbroswar` -> `Super Bros War` (both with a `systemname`). Cores without any `.info` are left out of the
+tarball (listed in `excluded`). A core whose `.info` has no `database` and is not on `info_fixes.json`'s
+`no_database_ok` list (the non-games, FB Alpha 2012) fails the pack. Tests: `python -m pytest tests`.
+
 A built core records where it came from (`build_metadata/commits/<core>_libretro.so.commit`, aggregated
 into `COMMITS.txt`), and `make cores` skips a core whose recorded libretro-super commit is the current pin.
 

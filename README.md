@@ -67,11 +67,11 @@ RETROARCH_VERSION=v1.23.0` to try another).
 
 ## The XMB theme
 
-`theme/`: the AutoBleem 2 look for 1.22.2's XMB - the wallpaper (`make_wallpaper.py` from the ab2
-theme's background), Selawik Light, the RetroSystem icons, and `retroarch-psc.cfg` with the keys that
-changed meaning since RetroBoot's 1.9.0 (its `xmb_theme = "8"` is Monochrome Inverted now, RetroSystem is
-7; `quit_on_close_content = "2"` for Close Content to quit as 1.9.0 did). `theme/README.md` says what
-goes where; the installer will apply it.
+`theme/`: the AutoBleem 2 look (ab2.0.0) for 1.22.2's XMB and Ozone - the designer's icon set (`theme/assets`,
+filled by `tools/sync_theme.py`), Red Hat Text, the 1280x720 wallpaper, and `retroarch-psc.cfg` with the theme
+keys and the ones that changed meaning since RetroBoot's 1.9.0 (`xmb_theme = "6"` is Custom now;
+`quit_on_close_content = "2"` for Close Content to quit as 1.9.0 did). The release zip carries `theme/`; the PC
+installer puts it on the stick, on install and on update. `theme/README.md` says what goes where.
 
 ## Cores
 

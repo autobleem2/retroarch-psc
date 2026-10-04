@@ -315,6 +315,11 @@ RUN git apply /build/RetroArch/patches/xz_core_loading.patch
 COPY retroarch/patches/psc_front_buttons.patch /build/RetroArch/patches/psc_front_buttons.patch
 RUN git apply /build/RetroArch/patches/psc_front_buttons.patch
 
+# A save state (and its picture) is written beside its name and renamed over it when complete, so a power cut never
+# leaves a truncated state (patches/safe_state_writes.patch).
+COPY retroarch/patches/safe_state_writes.patch /build/RetroArch/patches/safe_state_writes.patch
+RUN git apply /build/RetroArch/patches/safe_state_writes.patch
+
 # Copy PSC-specific Makefile
 COPY retroarch/Makefile.psc /build/RetroArch/Makefile.psc
 

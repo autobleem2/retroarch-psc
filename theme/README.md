@@ -10,6 +10,7 @@ Text, the circuit-board "mozaika" wallpaper. Ozone gets the same glyphs, tinted.
 | `assets/ozone/` (`png/`, `bold.ttf`, `regular.ttf`, `OFL.txt`) | `assets/ozone/` (stock files kept as `.prab2`) |
 | `ab2-1280x720.png` | `Retroarch themes/ab2-1280x720.png` - the wallpaper (the console is 720p) |
 | `ab2-theme.cfg` | the theme's keys for `retroarch.cfg` (`xmb_theme = "6"`, wallpaper, font, Ozone colours) - set only after the files above landed |
+| `ab2-states.cfg` | the save-state keys (`savestate_auto_save`, the thumbnail, the folder and its sorting) for the launcher's four slots - merged by an installer that knows it; one that predates it never reads it |
 | `retroarch-psc.cfg` | the build's keys for `retroarch.cfg` (front buttons, `quit_on_close_content`, drivers) - merged as before |
 | `Autobleem2.png`, `selawik-light.ttf`, `OFL.txt` | the previous theme's files, kept in the zip for installers already in the field (they copy these by name); unused by the ab2 look |
 

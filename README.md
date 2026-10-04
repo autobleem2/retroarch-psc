@@ -59,6 +59,7 @@ dependencies are satisfied by the stock firmware.
 | `wl_shell_fallback.patch` | Wayland fallback for the console's Weston 1.11 (no `xdg_shell`). |
 | `xmb_ribbon_drop_oes_derivatives_ext.patch` | Fixes the XMB ribbon shader on PowerVR Rogue. |
 | `xmb_shader_pipeline_psc_limit.patch` | Hides pipeline options too slow for the console; only "Off" and "Ribbon Simplified" are exposed. |
+| `safe_state_writes.patch` | Ours (2026-10-04): a save state and its picture are written to `<name>.tmp` and renamed over the name when complete (`content_auto_save_state`, `task_save_handler`, `task_screenshot_handler` for the silent state pictures) - a power cut or a full stick never leaves a truncated state in place of the last good one. |
 | `psc_front_buttons.patch` | Ours (2026-09-20): the console's front buttons as RetroArch keys - POWER (`KEY_SLEEP`) is `"power"`, OPEN (`KEY_EJECTCD`) is `"media"`; RESET was `"play"` already. The cfg binds RESET as `input_exit_emulator` (quit, the launcher takes over) and OPEN as `input_menu_toggle`. |
 | `xz_core_loading.patch` | Ours (2026-09-20): a core file that is an xz stream - RetroBoot's `km_*` cores, 147 of the 178 on a typical stick - is unpacked with liblzma into `/tmp/retroarch-cores` and loaded from there, kept for the next launch, one core at a time. `HAVE_XZ_CORES=1`, liblzma linked statically (the firmware has none). `tools/check_cores.py` is the report that showed the need. |
 

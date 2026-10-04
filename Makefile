@@ -258,7 +258,7 @@ package: version-info core-info
 	@rm -rf $(RELEASE_DIR) && mkdir -p $(RELEASE_DIR)
 	@echo "=== Packaging RetroArch ==="
 	@tmp=$$(mktemp -d) && cp $(RA_OUT)/retroarch $(RA_OUT)/VERSION "$$tmp/" && \
-		cp -r retroarch/docs "$$tmp/docs" && \
+		cp -r retroarch/docs "$$tmp/docs" && cp -r theme "$$tmp/theme" && \
 		(cd "$$tmp" && zip -q -r "$(PWD)/$(RELEASE_DIR)/retroarch-psc-$(TAG).zip" .) && rm -rf "$$tmp"
 	@echo "=== Packaging cores ==="
 	@tmp=$$(mktemp -d) && mkdir -p "$$tmp/cores" "$$tmp/info" && \

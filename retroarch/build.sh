@@ -174,8 +174,11 @@ if command -v upx >/dev/null; then
         rm -f /tmp/retroarch.upx "$OUT_DIR/retroarch.upx"
     fi
 fi
-printf 'retroarch_version=%s\npsc_build=%s\nbuild_date=%s\ntoolchain=autobleem-build-gcc6-glibc2.24\n' \
-    "$RETROARCH_VERSION" "$PSC_BUILD_NUM" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$OUT_DIR/VERSION"
+# first line = the bare release tag (what the launcher and installer compare with the site catalog's "version"),
+# the key=value lines follow (tools/make_manifest.py reads them; a reader that wants them skips line 1)
+printf '%s-%s\nretroarch_version=%s\npsc_build=%s\nbuild_date=%s\ntoolchain=autobleem-build-gcc6-glibc2.24\n' \
+    "$RETROARCH_VERSION" "$PSC_BUILD_NUM" "$RETROARCH_VERSION" "$PSC_BUILD_NUM" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    > "$OUT_DIR/VERSION"
 if [ -n "${OUT_UID:-}" ]; then chown -R "$OUT_UID:${OUT_GID:-$OUT_UID}" "$OUT_DIR" "$WORK"; fi
 
 echo "=== $OUT_DIR/retroarch ==="

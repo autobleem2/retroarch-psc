@@ -332,8 +332,8 @@ RUN ls -lh retroarch && \
 
 # The output: the stripped binary plus what it was built from
 RUN mkdir -p /build/output && cp retroarch /build/output/ && \
-    printf 'retroarch_version=%s\npsc_build=%s\nbuild_date=%s\ntoolchain=crosstool-ng-gcc9-glibc2.23\n' \
-        "${RETROARCH_VERSION}" "${PSC_BUILD_NUM}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /build/output/VERSION
+    printf '%s-%s\nretroarch_version=%s\npsc_build=%s\nbuild_date=%s\ntoolchain=crosstool-ng-gcc9-glibc2.23\n' \
+        "${RETROARCH_VERSION}" "${PSC_BUILD_NUM}" "${RETROARCH_VERSION}" "${PSC_BUILD_NUM}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /build/output/VERSION
 
 # `docker build --target retroarch -o <dir>` exports this stage's filesystem
 FROM scratch AS retroarch-out

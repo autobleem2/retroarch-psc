@@ -55,6 +55,10 @@ JOBS_PER_CORE ?= $(shell n=$$(nproc); j=$$(( n / $(PARALLEL) )); [ $$j -lt 1 ] &
 BUILD_ARGS := $(if $(LIBRETRO_SUPER_REF),--build-arg LIBRETRO_SUPER_REF=$(LIBRETRO_SUPER_REF)) \
               $(if $(RETROARCH_VERSION),--build-arg RETROARCH_VERSION=$(RETROARCH_VERSION))
 
+# The cores image runs as root, so what it writes into dist/ and build_metadata/ is root's and the next make or a
+# cleanup fails without sudo: after every docker run that writes there, hand both back to the calling user.
+CHOWN_BACK = $(DOCKER) run --rm -u root -v $(PWD)/$(DIST_DIR):/d -v $(PWD)/$(METADATA_DIR):/m --entrypoint chown $(CORES_IMAGE) -R $$(id -u):$$(id -g) /d /m
+
 # The enabled cores, one per line
 ENABLED_CORES = sed 's/\#.*//' $(CORES_FILE) | tr -d ' \t' | grep -v '^$$'
 
@@ -100,6 +104,7 @@ JOBS ?= $(shell nproc)
 retroarch: docker-check
 	@$(DOCKER) image inspect $(AB_BUILD_IMAGE) >/dev/null 2>&1 || \
 		{ echo "Error: no $(AB_BUILD_IMAGE) image here - build it from AutoBleem2/docker, or use 'make retroarch-ctng'."; exit 1; }
+	@mkdir -p $(RA_OUT)
 	$(DOCKER) run --rm -u root -v "$(PWD):$(PWD)" -w "$(PWD)" \
 		-e RETROARCH_VERSION=$(RA_VERSION) -e PSC_BUILD_NUM=$(BUILD_NUM) -e JOBS=$(JOBS) \
 		-e OUT_UID=$$(id -u) -e OUT_GID=$$(id -g) -e OUT_DIR=$(RA_OUT) \
@@ -136,12 +141,13 @@ version-info: ensure-cores-image
 
 # Write libretro core info files for the enabled core set.
 core-info: ensure-cores-image
-	@mkdir -p $(INFO_OUT)
+	@mkdir -p $(INFO_OUT) $(METADATA_DIR)
 	@$(DOCKER) run --rm \
 		-v $(PWD)/$(CORES_FILE):/build/cores.txt:ro \
 		-v $(PWD)/$(DIST_DIR):/build/dist \
 		$(CORES_IMAGE) \
-		/build/scripts/sync-core-info.sh /build/cores.txt /build/libretro-super /build/dist/info
+		/build/scripts/sync-core-info.sh /build/cores.txt /build/libretro-super /build/dist/info; \
+		rc=$$?; $(CHOWN_BACK); exit $$rc
 
 # Build all cores in parallel. FORCE=1 rebuilds the ones already built.
 parallel-build: ensure-cores-image version-info
@@ -167,6 +173,7 @@ parallel-build: ensure-cores-image version-info
 					-v $(PWD)/$(METADATA_DIR):/build/metadata \
 					$(CORES_IMAGE) \
 					/build/build-core.sh "{}" > "$$log_file" 2>&1; \
+				$(CHOWN_BACK) >/dev/null 2>&1; \
 				if [ -f "$(CORES_OUT)/{}_libretro.so" ]; then \
 					echo "<<< Done: {}"; \
 					echo "{}" >> $(SUCCESS_FILE); \
@@ -198,7 +205,7 @@ core: ensure-cores-image
 		-v $(PWD)/$(CORES_OUT):/build/output \
 		-v $(PWD)/$(METADATA_DIR):/build/metadata \
 		$(CORES_IMAGE) \
-		/build/build-core.sh "$(CORE)"
+		/build/build-core.sh "$(CORE)"; rc=$$?; $(CHOWN_BACK); exit $$rc
 	@$(MAKE) --no-print-directory commits
 
 # Aggregate per-core .so.commit sidecar files into COMMITS.txt
@@ -231,7 +238,9 @@ retry-failed: ensure-cores-image
 			$(DOCKER) run --rm -e JOBS=$(JOBS_PER_CORE) \
 				-v $(PWD)/$(CORES_OUT):/build/output \
 				-v $(PWD)/$(METADATA_DIR):/build/metadata \
-				$(CORES_IMAGE) /build/build-core.sh "$$core" > "$(LOG_DIR)/$$core.log" 2>&1 \
+				$(CORES_IMAGE) /build/build-core.sh "$$core" > "$(LOG_DIR)/$$core.log" 2>&1; \
+			$(CHOWN_BACK) >/dev/null 2>&1; \
+			[ -f "$(CORES_OUT)/$${core}_libretro.so" ] \
 				&& { echo "<<< Done: $$core"; [ -f $(FAILED_FILE) ] && sed -i "/^$$core$$/d" $(FAILED_FILE); } \
 				|| { echo "<<< Still failed: $$core (log: $(LOG_DIR)/$$core.log)"; }; \
 		fi; \

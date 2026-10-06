@@ -105,7 +105,7 @@ if [ ! -d "$SRC/.git" ]; then
     mkdir -p "$WORK"
     git clone --depth=1 --branch "$RETROARCH_VERSION" https://github.com/libretro/RetroArch.git "$SRC"
     git -C "$SRC" submodule update --init --recursive --depth 1
-    for p in wl_shell_fallback xmb_ribbon_drop_oes_derivatives_ext xmb_shader_pipeline_psc_limit alsa_force_s16_psc_mtk xz_core_loading psc_front_buttons safe_state_writes; do
+    for p in wl_shell_fallback xmb_ribbon_drop_oes_derivatives_ext xmb_shader_pipeline_psc_limit alsa_force_s16_psc_mtk xz_core_loading psc_front_buttons safe_state_writes menu_pixel_aspect; do
         echo "=== patch: $p ==="
         git -C "$SRC" apply "$ROOT/retroarch/patches/$p.patch"
     done

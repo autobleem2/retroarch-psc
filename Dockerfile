@@ -320,6 +320,11 @@ RUN git apply /build/RetroArch/patches/psc_front_buttons.patch
 COPY retroarch/patches/safe_state_writes.patch /build/RetroArch/patches/safe_state_writes.patch
 RUN git apply /build/RetroArch/patches/safe_state_writes.patch
 
+# The menu on a CRT's non-square pixels: menu_pixel_aspect and menu_safe_margin, identity by default
+# (patches/menu_pixel_aspect.patch).
+COPY retroarch/patches/menu_pixel_aspect.patch /build/RetroArch/patches/menu_pixel_aspect.patch
+RUN git apply /build/RetroArch/patches/menu_pixel_aspect.patch
+
 # Copy PSC-specific Makefile
 COPY retroarch/Makefile.psc /build/RetroArch/Makefile.psc
 

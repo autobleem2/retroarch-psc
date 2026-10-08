@@ -324,6 +324,9 @@ RUN git apply /build/RetroArch/patches/safe_state_writes.patch
 # (patches/menu_pixel_aspect.patch).
 COPY retroarch/patches/menu_pixel_aspect.patch /build/RetroArch/patches/menu_pixel_aspect.patch
 RUN git apply /build/RetroArch/patches/menu_pixel_aspect.patch
+# The game's own viewport stays in the real window (menu_pixel_aspect_game_viewport.patch).
+COPY retroarch/patches/menu_pixel_aspect_game_viewport.patch /build/RetroArch/patches/menu_pixel_aspect_game_viewport.patch
+RUN git apply /build/RetroArch/patches/menu_pixel_aspect_game_viewport.patch
 
 # Copy PSC-specific Makefile
 COPY retroarch/Makefile.psc /build/RetroArch/Makefile.psc

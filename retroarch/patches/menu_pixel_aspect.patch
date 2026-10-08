@@ -1,0 +1,386 @@
+From: AutoBleem <autobleem@retromenele.pl>
+Subject: [PATCH] menu_pixel_aspect / menu_safe_margin: the menu on a CRT's non-square pixels
+
+RetroArch 1.22.2 lays the menu out on the window as if its pixels were square and draws to the very edges.
+On the console's CRT output (720x480 shown 4:3, a pixel is 8:9) XMB, Ozone and RGUI come out 12.5 % too wide,
+and the header, footer and ribbon run into the tube's overscan. Two new settings, identity at their defaults:
+
+  menu_pixel_aspect  (float, 1.0)  width / height of one output pixel; 0.888889 for 720x480 at 4:3
+  menu_safe_margin   (uint %, 0)   share of the window kept free on every side (0..25)
+
+The menu, the display widgets and the on-screen text are laid out in a virtual screen: the window less the
+margin, its width multiplied by menu_pixel_aspect (720x480, 8/9, 5 %: 576x432, square pixels, exactly 4:3).
+video_driver_get_size(), video_info->width/height and the size handed to the menu's render() and to
+gfx_animation_update() are the virtual size, so no menu driver or widget needs a change; the GL driver maps
+the virtual screen onto the window: gfx_display_gl2_draw(), the scissor begin/end, gl2_set_viewport() for
+the font (glyphs get the stretch too) and the RGUI menu texture. A rect spanning the whole virtual width
+(height) is stretched to the window's edge on that axis, so wallpaper, ribbon and dimming still fill the
+margin. video_driver_get_physical_size() is the window's own size. GL2 only (the console's video driver);
+the mouse/touch pointer is not mapped (the console has pads only).
+---
+diff --git a/config.def.h b/config.def.h
+index a2f36da..3d96c7e 100644
+--- a/config.def.h
++++ b/config.def.h
+@@ -1556,6 +1556,14 @@
+ #endif
+ /* Specifies whether display widgets should be scaled
+  * automatically using the default menu scale factor */
++/* Pixel aspect (width / height of one output pixel) the menu and the
++ * display widgets are laid out for: 1.0 = square pixels. 8/9 = 0.8889 for
++ * 720x480 shown at 4:3 on a CRT. The menu draws in a virtual screen whose
++ * width is the safe area width times this value, stretched back on output */
++#define DEFAULT_MENU_PIXEL_ASPECT 1.0f
++/* Percent of the window kept free on every side by the menu and the
++ * display widgets (CRT overscan); 0 = the whole window */
++#define DEFAULT_MENU_SAFE_MARGIN 0
+ #define DEFAULT_MENU_WIDGET_SCALE_AUTO true
+ /* Default scale factor for display widgets when widget
+  * auto scaling is disabled (fullscreen mode) */
+diff --git a/configuration.c b/configuration.c
+index 0ec2ee4..dfe08c7 100644
+--- a/configuration.c
++++ b/configuration.c
+@@ -2294,6 +2294,7 @@ static struct config_float_setting *populate_settings_float(
+ 
+ #ifdef HAVE_MENU
+    SETTING_FLOAT("menu_scale_factor",            &settings->floats.menu_scale_factor, true, DEFAULT_MENU_SCALE_FACTOR, false);
++   SETTING_FLOAT("menu_pixel_aspect",            &settings->floats.menu_pixel_aspect, true, DEFAULT_MENU_PIXEL_ASPECT, false);
+    SETTING_FLOAT("menu_widget_scale_factor",     &settings->floats.menu_widget_scale_factor, true, DEFAULT_MENU_WIDGET_SCALE_FACTOR, false);
+ #if !(defined(RARCH_CONSOLE) || defined(RARCH_MOBILE))
+    SETTING_FLOAT("menu_widget_scale_factor_windowed", &settings->floats.menu_widget_scale_factor_windowed, true, DEFAULT_MENU_WIDGET_SCALE_FACTOR_WINDOWED, false);
+@@ -2450,6 +2451,7 @@ static struct config_uint_setting *populate_settings_uint(
+    SETTING_UINT("menu_xmb_vertical_fade_factor",           &settings->uints.menu_xmb_vertical_fade_factor, true, DEFAULT_XMB_VERTICAL_FADE_FACTOR, false);
+    SETTING_UINT("xmb_alpha_factor",              &settings->uints.menu_xmb_alpha_factor, true, DEFAULT_XMB_ALPHA_FACTOR, false);
+    SETTING_UINT("xmb_layout",                    &settings->uints.menu_xmb_layout, true, DEFAULT_XMB_MENU_LAYOUT, false);
++   SETTING_UINT("menu_safe_margin",              &settings->uints.menu_safe_margin, true, DEFAULT_MENU_SAFE_MARGIN, false);
+    SETTING_UINT("xmb_theme",                     &settings->uints.menu_xmb_theme, true, DEFAULT_XMB_ICON_THEME, false);
+    SETTING_UINT("xmb_menu_color_theme",          &settings->uints.menu_xmb_color_theme, true, DEFAULT_XMB_THEME, false);
+    SETTING_UINT("menu_shader_pipeline",          &settings->uints.menu_xmb_shader_pipeline, true, DEFAULT_MENU_SHADER_PIPELINE, false);
+diff --git a/configuration.h b/configuration.h
+index 81b30e8..9526e2f 100644
+--- a/configuration.h
++++ b/configuration.h
+@@ -302,6 +302,7 @@ typedef struct settings
+       unsigned menu_xmb_animation_horizontal_highlight;
+       unsigned menu_xmb_animation_move_up_down;
+       unsigned menu_xmb_layout;
++      unsigned menu_safe_margin;
+       unsigned menu_xmb_shader_pipeline;
+       unsigned menu_xmb_alpha_factor;
+       unsigned menu_xmb_theme;
+@@ -420,6 +421,7 @@ typedef struct settings
+       float video_hdr_display_contrast;
+ 
+       float menu_scale_factor;
++      float menu_pixel_aspect;
+       float menu_widget_scale_factor;
+       float menu_widget_scale_factor_windowed;
+       float menu_wallpaper_opacity;
+diff --git a/gfx/drivers/gl2.c b/gfx/drivers/gl2.c
+index d39eb15..9e0cbcc 100644
+--- a/gfx/drivers/gl2.c
++++ b/gfx/drivers/gl2.c
+@@ -489,6 +489,50 @@ gfx_display_gl2_discard_draw_rectangle(gl2_t *gl,
+ }
+ #endif
+ 
++/* menu_pixel_aspect / menu_safe_margin: the menu, the widgets and the
++ * on-screen text are laid out in a virtual screen (video_driver_get_size()
++ * returns its size); this maps a rect of it, origin bottom-left, to real
++ * window pixels. A rect that spans the whole virtual width (height) is
++ * stretched to the window's edge on that axis, so wallpapers, the ribbon and
++ * the dimming still fill the margin. Identity with the default settings. */
++static void gl2_ui_map_rect(const gl2_t *gl,
++      float *x, float *y, float *w, float *h)
++{
++   float x1, y1, kx, ky;
++   video_ui_transform_t t;
++
++   video_driver_get_ui_transform(&t, gl->video_width, gl->video_height);
++   if (!t.active)
++      return;
++
++   kx = (float)t.sw / (float)t.vw;
++   ky = (float)t.sh / (float)t.vh;
++
++   if (*x <= 0.0f && *x + *w >= (float)t.vw)
++   {
++      *x = 0.0f;
++      *w = (float)gl->video_width;
++   }
++   else
++   {
++      x1 = roundf((float)t.sx + (*x + *w) * kx);
++      *x = roundf((float)t.sx + *x * kx);
++      *w = x1 - *x;
++   }
++
++   if (*y <= 0.0f && *y + *h >= (float)t.vh)
++   {
++      *y = 0.0f;
++      *h = (float)gl->video_height;
++   }
++   else
++   {
++      y1 = roundf((float)t.sy + (*y + *h) * ky);
++      *y = roundf((float)t.sy + *y * ky);
++      *h = y1 - *y;
++   }
++}
++
+ static void gfx_display_gl2_draw(gfx_display_ctx_draw_t *draw,
+       void *data, unsigned video_width, unsigned video_height)
+ {
+@@ -514,7 +558,14 @@ static void gfx_display_gl2_draw(gfx_display_ctx_draw_t *draw,
+    if (!draw->coords->lut_tex_coord)
+       draw->coords->lut_tex_coord = &gl2_tex_coords[0];
+ 
+-   glViewport(draw->x, draw->y, draw->width, draw->height);
++   {
++      float vx = draw->x;
++      float vy = draw->y;
++      float vw = (float)draw->width;
++      float vh = (float)draw->height;
++      gl2_ui_map_rect(gl, &vx, &vy, &vw, &vh);
++      glViewport((GLint)vx, (GLint)vy, (GLsizei)vw, (GLsizei)vh);
++   }
+    glBindTexture(GL_TEXTURE_2D, (GLuint)draw->texture);
+ 
+    gl->shader->set_coords(gl->shader_data, draw->coords);
+@@ -616,7 +667,13 @@ static void gfx_display_gl2_scissor_begin(
+       int x, int y,
+       unsigned width, unsigned height)
+ {
+-   glScissor(x, video_height - y - height, width, height);
++   float sx = (float)x;
++   float sy = (float)((int)video_height - y - (int)height);
++   float sw = (float)width;
++   float sh = (float)height;
++   if (data)
++      gl2_ui_map_rect((const gl2_t*)data, &sx, &sy, &sw, &sh);
++   glScissor((GLint)sx, (GLint)sy, (GLsizei)sw, (GLsizei)sh);
+    glEnable(GL_SCISSOR_TEST);
+ #ifdef MALI_BUG
+    /* TODO/FIXME: If video width/height changes between
+@@ -636,7 +693,12 @@ static void gfx_display_gl2_scissor_end(
+       unsigned video_width,
+       unsigned video_height)
+ {
+-   glScissor(0, 0, video_width, video_height);
++   const gl2_t *gl = (const gl2_t*)data;
++   /* The whole window; video_width/height are the virtual screen's */
++   if (gl)
++      glScissor(0, 0, gl->video_width, gl->video_height);
++   else
++      glScissor(0, 0, video_width, video_height);
+    glDisable(GL_SCISSOR_TEST);
+ #ifdef MALI_BUG
+    scissor_set_rectangle(0, video_width - 1, 0, video_height - 1, 0);
+@@ -1308,7 +1370,26 @@ static void gl2_set_viewport(gl2_t *gl,
+       gl->vp.height = vp_height;
+    }
+ 
+-   glViewport(gl->vp.x, gl->vp.y, gl->vp.width, gl->vp.height);
++   if (force_full)
++   {
++      /* UI (text, menu texture): the safe area of the window, while
++       * gl->vp.width/height stay the virtual screen's, which is what
++       * the font code divides pixel sizes by */
++      video_ui_transform_t t;
++      video_driver_get_ui_transform(&t, gl->video_width, gl->video_height);
++      if (t.active)
++      {
++         gl->vp.x      = 0;
++         gl->vp.y      = 0;
++         gl->vp.width  = t.vw;
++         gl->vp.height = t.vh;
++         glViewport(t.sx, t.sy, t.sw, t.sh);
++      }
++      else
++         glViewport(gl->vp.x, gl->vp.y, gl->vp.width, gl->vp.height);
++   }
++   else
++      glViewport(gl->vp.x, gl->vp.y, gl->vp.width, gl->vp.height);
+    gl2_set_projection(gl, &default_ortho, allow_rotate);
+ 
+    /* Set last backbuffer viewport. */
+@@ -3332,7 +3413,12 @@ static INLINE void gl2_draw_texture(gl2_t *gl)
+ 
+    if (gl->flags & GL2_FLAG_MENU_TEXTURE_FULLSCREEN)
+    {
+-      glViewport(0, 0, width, height);
++      video_ui_transform_t t;
++      video_driver_get_ui_transform(&t, width, height);
++      if (t.active)
++         glViewport(t.sx, t.sy, t.sw, t.sh);
++      else
++         glViewport(0, 0, width, height);
+       glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+       glViewport(gl->vp.x, gl->vp.y, gl->vp.width, gl->vp.height);
+    }
+@@ -4444,7 +4530,7 @@ static void *gl2_init(const video_info_t *video,
+    if (temp_width != 0 && temp_height != 0)
+       video_driver_set_size(temp_width, temp_height);
+ 
+-   video_driver_get_size(&temp_width, &temp_height);
++   video_driver_get_physical_size(&temp_width, &temp_height);
+    gl->video_width       = temp_width;
+    gl->video_height      = temp_height;
+ 
+diff --git a/gfx/video_driver.c b/gfx/video_driver.c
+index 7917922..e02de82 100644
+--- a/gfx/video_driver.c
++++ b/gfx/video_driver.c
+@@ -1795,7 +1795,35 @@ void video_driver_set_filtering(unsigned index,
+             index, smooth, ctx_scaling);
+ }
+ 
+-void video_driver_get_size(unsigned *width, unsigned *height)
++void video_driver_get_ui_transform(video_ui_transform_t *t,
++      unsigned width, unsigned height)
++{
++   settings_t *settings = config_get_ptr();
++   float par            = settings->floats.menu_pixel_aspect;
++   unsigned margin      = settings->uints.menu_safe_margin;
++
++   if (!(par >= 0.25f && par <= 4.0f))
++      par       = 1.0f;
++   if (margin > 25)
++      margin    = 25;
++
++   t->sx        = (unsigned)((float)width  * margin / 100.0f + 0.5f);
++   t->sy        = (unsigned)((float)height * margin / 100.0f + 0.5f);
++   t->sw        = width  - 2 * t->sx;
++   t->sh        = height - 2 * t->sy;
++   t->vw        = (unsigned)((float)t->sw * par + 0.5f);
++   t->vh        = t->sh;
++   t->active    = (par != 1.0f || margin != 0) && t->vw > 0 && t->vh > 0;
++   if (!t->active)
++   {
++      t->sx     = 0;
++      t->sy     = 0;
++      t->sw     = t->vw = width;
++      t->sh     = t->vh = height;
++   }
++}
++
++void video_driver_get_physical_size(unsigned *width, unsigned *height)
+ {
+    video_driver_state_t *video_st = &video_driver_st;
+ #ifdef HAVE_THREADS
+@@ -1812,6 +1840,19 @@ void video_driver_get_size(unsigned *width, unsigned *height)
+ #endif
+ }
+ 
++void video_driver_get_size(unsigned *width, unsigned *height)
++{
++   video_ui_transform_t t;
++   unsigned w, h;
++
++   video_driver_get_physical_size(&w, &h);
++   video_driver_get_ui_transform(&t, w, h);
++   if (width)
++      *width        = t.vw;
++   if (height)
++      *height       = t.vh;
++}
++
+ void video_driver_set_size(unsigned width, unsigned height)
+ {
+    video_driver_state_t *video_st = &video_driver_st;
+@@ -2985,8 +3026,13 @@ void video_driver_build_info(video_frame_info_t *video_info)
+    video_info->widgets_userdata            = NULL;
+ #endif
+ 
+-   video_info->width                       = video_st->width;
+-   video_info->height                      = video_st->height;
++   {
++      /* The menu's virtual screen, see video_driver_get_size() */
++      video_ui_transform_t ui;
++      video_driver_get_ui_transform(&ui, video_st->width, video_st->height);
++      video_info->width                    = ui.vw;
++      video_info->height                   = ui.vh;
++   }
+    video_info->scale_width                 = video_st->scale_width;
+    video_info->scale_height                = video_st->scale_height;
+ 
+diff --git a/gfx/video_driver.h b/gfx/video_driver.h
+index ca6434c..838e4e1 100644
+--- a/gfx/video_driver.h
++++ b/gfx/video_driver.h
+@@ -996,8 +996,28 @@ void video_driver_set_filtering(unsigned index, bool smooth, bool ctx_scaling);
+ 
+ const char *video_driver_get_ident(void);
+ 
++/* The size the menu, the display widgets and the on-screen text are laid
++ * out for: the window, less menu_safe_margin on every side, with its width
++ * multiplied by menu_pixel_aspect. The window's own size is
++ * video_driver_get_physical_size(). */
+ void video_driver_get_size(unsigned *width, unsigned *height);
+ 
++void video_driver_get_physical_size(unsigned *width, unsigned *height);
++
++/* Maps the virtual screen (vw x vh, square pixels) onto the safe area
++ * (sx, sy, sw, sh, window pixels, origin bottom-left) of a window of
++ * the given size. active is false (and vw x vh the window) when
++ * menu_pixel_aspect is 1 and menu_safe_margin 0. */
++typedef struct video_ui_transform
++{
++   unsigned sx, sy, sw, sh;
++   unsigned vw, vh;
++   bool active;
++} video_ui_transform_t;
++
++void video_driver_get_ui_transform(video_ui_transform_t *t,
++      unsigned width, unsigned height);
++
+ void video_driver_set_size(unsigned width, unsigned height);
+ 
+ float video_driver_get_aspect_ratio(void);
+diff --git a/runloop.c b/runloop.c
+index 679517b..2b8256c 100644
+--- a/runloop.c
++++ b/runloop.c
+@@ -6025,12 +6025,17 @@ static enum runloop_state_enum runloop_check_state(
+ #endif
+ 
+ #if defined(HAVE_MENU) || defined(HAVE_GFX_WIDGETS)
+-   gfx_animation_update(
+-         current_time,
+-         settings->bools.menu_timedate_enable,
+-         settings->floats.menu_ticker_speed,
+-         video_st->width,
+-         video_st->height);
++   {
++      /* the menu's virtual screen (menu_pixel_aspect, menu_safe_margin) */
++      unsigned ui_width, ui_height;
++      video_driver_get_size(&ui_width, &ui_height);
++      gfx_animation_update(
++            current_time,
++            settings->bools.menu_timedate_enable,
++            settings->floats.menu_ticker_speed,
++            ui_width,
++            ui_height);
++   }
+ 
+ #if defined(HAVE_GFX_WIDGETS)
+    if (widgets_active)
+@@ -6301,11 +6306,15 @@ static enum runloop_state_enum runloop_check_state(
+             if (BIT64_GET(menu->state, MENU_STATE_BLIT))
+             {
+                if (menu->driver_ctx->render)
++               {
++                  unsigned ui_width, ui_height;
++                  video_driver_get_size(&ui_width, &ui_height);
+                   menu->driver_ctx->render(
+                         menu->userdata,
+-                        video_st->width,
+-                        video_st->height,
++                        ui_width,
++                        ui_height,
+                         (runloop_st->flags & RUNLOOP_FLAG_IDLE) ? true : false);
++               }
+             }
+ 
+             if (      (menu_st->flags & MENU_ST_FLAG_ALIVE)

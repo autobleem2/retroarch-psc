@@ -1,0 +1,18 @@
+--- a/gfx/drivers/gl2.c
++++ b/gfx/drivers/gl2.c
+@@ -1339,6 +1339,15 @@
+       bool force_full, bool allow_rotate,
+       bool video_scale_integer)
+ {
++   /* The game's viewport is laid out in the real window. The menu code
++    * and the widgets restore it with the virtual screen's size
++    * (menu_pixel_aspect, menu_safe_margin), which would put the game
++    * into the lower-left corner of a smaller area. */
++   if (!force_full)
++   {
++      vp_width  = gl->video_width;
++      vp_height = gl->video_height;
++   }
+    float device_aspect      = (float)vp_width / (float)vp_height;
+ 
+    if (gl->ctx_driver->translate_aspect)
